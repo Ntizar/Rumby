@@ -21,14 +21,9 @@ export const metadata: Metadata = {
 const auroraCss = [
   "ntizar.css",
   "ntizar.themes.css",
-  "ntizar.data.css",
   "ntizar.maps.css",
-  "ntizar.viz.css",
-  "ntizar.motion.css",
   "ntizar.forms.css",
   "ntizar.ui.css",
-  "ntizar.patterns.css",
-  "ntizar.next.css",
 ];
 
 export default function RootLayout({
@@ -52,12 +47,12 @@ export default function RootLayout({
       </head>
       <body
         className="nz min-h-full"
-        data-nz-theme="dark"
+        data-nz-theme="light"
         data-nz-skin="aurora"
-        data-nz-shape="rounded"
+        data-nz-shape="default"
         data-nz-density="comfortable"
-        data-nz-motion="calm"
-        data-nz-color-system="oklch"
+        data-nz-motion="standard"
+        data-nz-color-system="hex"
       >
         {children}
       </body>

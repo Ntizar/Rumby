@@ -4,15 +4,14 @@ import { useEffect, useRef } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
-import type { Incident, Place } from "@/lib/domain/types";
+import type { Place } from "@/lib/domain/types";
 
 type MadridMapProps = {
-  origin: Place;
-  destination: Place;
-  incidents: Incident[];
+  origin: Place | null;
+  destination: Place | null;
 };
 
-export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
+export function MadridMap({ origin, destination }: MadridMapProps) {
   const mapRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -22,9 +21,9 @@ export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
 
     const map = new maplibregl.Map({
       container: mapRef.current,
-      style: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
-      center: [-3.6762, 40.438],
-      zoom: 10.3,
+      style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+      center: [-3.7035, 40.4169],
+      zoom: 11.6,
     });
 
     map.addControl(new maplibregl.NavigationControl(), "top-right");
@@ -41,56 +40,36 @@ export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
         .addTo(map);
     };
 
-    makeMarker("#4f8cff", origin, "Origen");
-    makeMarker("#ff8b38", destination, "Destino");
+    if (origin) {
+      makeMarker("#2563eb", origin, "Origen");
+    }
 
-    incidents.forEach((incident) => {
-      const color = incident.severity === "high" ? "#ef4444" : incident.severity === "medium" ? "#f97316" : "#10b981";
-      new maplibregl.Marker({ color, scale: 0.85 })
-        .setLngLat([incident.lon, incident.lat])
-        .setPopup(
-          new maplibregl.Popup({ offset: 12 }).setHTML(
-            `<strong>${incident.title}</strong><br>${incident.summary}`,
-          ),
-        )
-        .addTo(map);
-    });
+    if (destination) {
+      makeMarker("#f97316", destination, "Destino");
+    }
 
-    map.on("load", () => {
-      map.addSource("rumby-route", {
-        type: "geojson",
-        data: {
-          type: "Feature",
-          geometry: {
-            type: "LineString",
-            coordinates: [
-              [origin.lon, origin.lat],
-              [-3.6995, 40.4187],
-              [-3.6762, 40.438],
-              [-3.6111, 40.4689],
-              [destination.lon, destination.lat],
-            ],
-          },
-          properties: {},
-        },
+    if (origin && destination) {
+      const bounds = new maplibregl.LngLatBounds(
+        [origin.lon, origin.lat],
+        [destination.lon, destination.lat],
+      );
+
+      map.fitBounds(bounds, {
+        padding: 64,
+        maxZoom: 12.5,
       });
-
-      map.addLayer({
-        id: "rumby-route-line",
-        type: "line",
-        source: "rumby-route",
-        paint: {
-          "line-color": "#7c4dff",
-          "line-width": 5,
-          "line-opacity": 0.9,
-        },
-      });
-    });
+    } else if (origin) {
+      map.setCenter([origin.lon, origin.lat]);
+      map.setZoom(12.5);
+    } else if (destination) {
+      map.setCenter([destination.lon, destination.lat]);
+      map.setZoom(12.5);
+    }
 
     return () => {
       map.remove();
     };
-  }, [destination, incidents, origin]);
+  }, [destination, origin]);
 
   return <div ref={mapRef} className="rumby-map-canvas" aria-label="Mapa multimodal de Madrid" />;
 }

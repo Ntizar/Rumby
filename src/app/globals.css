@@ -8,19 +8,19 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
   min-height: 100%;
-  background: #04101f;
+  background: #f8fafc;
 }
 
 body {
   min-height: 100%;
   margin: 0;
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
-  background: #04101f;
+  background: #f8fafc;
 }
 
 a {
@@ -32,49 +32,79 @@ a {
   box-sizing: border-box;
 }
 
-.nz {
-  --nz-color-brand: #4f8cff;
-  --nz-color-accent: #ff8b38;
-  --nz-gradient-aurora: linear-gradient(135deg, #4f8cff 0%, #7c4dff 48%, #ff8b38 100%);
+.rumby-page {
+  min-height: 100vh;
+  background: var(--nz-surface-page, #f8fafc);
+  color: var(--nz-text-default, #0f172a);
 }
 
-.rumby-shell {
-  background:
-    radial-gradient(circle at top, rgba(79, 140, 255, 0.16), transparent 30%),
-    linear-gradient(180deg, #050d18 0%, #081523 40%, #07111d 100%);
+.rumby-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--nz-space-4);
+}
+
+.rumby-planner-layout {
+  display: grid;
+  gap: var(--nz-space-5);
+  align-items: start;
+}
+
+.rumby-mode-grid {
+  display: grid;
+  gap: var(--nz-space-2);
 }
 
 .rumby-map-shell {
-  min-height: 34rem;
+  min-height: 22rem;
   overflow: hidden;
 }
 
 .rumby-map-canvas {
   width: 100%;
   height: 100%;
-  min-height: 34rem;
+  min-height: 22rem;
 }
 
 .rumby-map-canvas .maplibregl-ctrl-group {
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(5, 13, 24, 0.72);
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: rgba(255, 255, 255, 0.92);
   box-shadow: none;
 }
 
 .rumby-map-canvas .maplibregl-ctrl button {
   background: transparent;
-  color: white;
+  color: #0f172a;
 }
 
 .rumby-map-canvas .maplibregl-popup-content {
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(15, 23, 42, 0.12);
   border-radius: 1rem;
-  background: rgba(5, 13, 24, 0.88);
-  color: white;
-  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+  background: rgba(255, 255, 255, 0.98);
+  color: #0f172a;
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
 }
 
 .rumby-map-canvas .maplibregl-popup-tip {
-  border-top-color: rgba(5, 13, 24, 0.88);
-  border-bottom-color: rgba(5, 13, 24, 0.88);
+  border-top-color: rgba(255, 255, 255, 0.98);
+  border-bottom-color: rgba(255, 255, 255, 0.98);
+}
+
+@media (min-width: 48rem) {
+  .rumby-mode-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .rumby-planner-layout {
+    grid-template-columns: minmax(0, 28rem) minmax(0, 1fr);
+  }
+
+  .rumby-map-shell,
+  .rumby-map-canvas {
+    min-height: 34rem;
+  }
 }
