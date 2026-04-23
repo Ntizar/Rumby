@@ -12,40 +12,60 @@ type MadridMapProps = {
 };
 
 export function MadridMap({ origin, destination }: MadridMapProps) {
-  const mapRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<maplibregl.Map | null>(null);
+  const markersRef = useRef<maplibregl.Marker[]>([]);
 
+  // Init una sola vez.
   useEffect(() => {
-    if (!mapRef.current) {
-      return;
-    }
+    if (!containerRef.current || mapRef.current) return;
 
     const map = new maplibregl.Map({
-      container: mapRef.current,
+      container: containerRef.current,
       style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
       center: [-3.7035, 40.4169],
       zoom: 11.6,
+      attributionControl: false,
     });
 
-    map.addControl(new maplibregl.NavigationControl(), "top-right");
-    map.addControl(new maplibregl.AttributionControl({ compact: true }), "bottom-left");
+    map.addControl(
+      new maplibregl.NavigationControl({ showCompass: false }),
+      "top-right",
+    );
+    map.addControl(
+      new maplibregl.AttributionControl({ compact: true }),
+      "bottom-right",
+    );
 
-    const makeMarker = (color: string, place: Place, label: string) => {
-      const popup = new maplibregl.Popup({ offset: 18 }).setHTML(
-        `<strong>${label}</strong><br>${place.name}`,
-      );
+    mapRef.current = map;
 
-      new maplibregl.Marker({ color, scale: 1.05 })
-        .setLngLat([place.lon, place.lat])
-        .setPopup(popup)
-        .addTo(map);
+    return () => {
+      map.remove();
+      mapRef.current = null;
+      markersRef.current = [];
     };
+  }, []);
+
+  // Reaccionar a cambios de origin/destination sin recrear el mapa.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = [];
 
     if (origin) {
-      makeMarker("#2563eb", origin, "Origen");
+      const m = new maplibregl.Marker({ color: "#2563eb", scale: 0.95 })
+        .setLngLat([origin.lon, origin.lat])
+        .addTo(map);
+      markersRef.current.push(m);
     }
 
     if (destination) {
-      makeMarker("#f97316", destination, "Destino");
+      const m = new maplibregl.Marker({ color: "#f97316", scale: 0.95 })
+        .setLngLat([destination.lon, destination.lat])
+        .addTo(map);
+      markersRef.current.push(m);
     }
 
     if (origin && destination) {
@@ -53,23 +73,13 @@ export function MadridMap({ origin, destination }: MadridMapProps) {
         [origin.lon, origin.lat],
         [destination.lon, destination.lat],
       );
-
-      map.fitBounds(bounds, {
-        padding: 64,
-        maxZoom: 12.5,
-      });
+      map.fitBounds(bounds, { padding: { top: 220, bottom: 320, left: 40, right: 40 }, maxZoom: 13.5, duration: 600 });
     } else if (origin) {
-      map.setCenter([origin.lon, origin.lat]);
-      map.setZoom(12.5);
+      map.flyTo({ center: [origin.lon, origin.lat], zoom: 13.5, duration: 600 });
     } else if (destination) {
-      map.setCenter([destination.lon, destination.lat]);
-      map.setZoom(12.5);
+      map.flyTo({ center: [destination.lon, destination.lat], zoom: 13.5, duration: 600 });
     }
+  }, [origin, destination]);
 
-    return () => {
-      map.remove();
-    };
-  }, [destination, origin]);
-
-  return <div ref={mapRef} className="rumby-map-canvas" aria-label="Mapa multimodal de Madrid" />;
+  return <div ref={containerRef} className="rumby-map-layer" aria-label="Mapa de Madrid" />;
 }

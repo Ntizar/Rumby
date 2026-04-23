@@ -13,18 +13,18 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rumby",
+  title: "Rumby · Madrid",
   description:
-    "Multimodal mobility platform starting in Madrid with modular city and data-source support.",
+    "Compara todas las formas reales de moverte por Madrid: metro, bus, cercanias, bici, moto, taxi, patinete, coche y a pie.",
 };
 
-const auroraCss = [
-  "ntizar.css",
-  "ntizar.themes.css",
-  "ntizar.maps.css",
-  "ntizar.forms.css",
-  "ntizar.ui.css",
-];
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: "cover" as const,
+  themeColor: "#eef2f7",
+};
 
 export default function RootLayout({
   children,
@@ -36,26 +36,7 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <head>
-        {auroraCss.map((file) => (
-          <link
-            key={file}
-            rel="stylesheet"
-            href={`https://cdn.jsdelivr.net/gh/Ntizar/Ntizar-Aurora@v5.1.0/${file}`}
-          />
-        ))}
-      </head>
-      <body
-        className="nz min-h-full"
-        data-nz-theme="light"
-        data-nz-skin="aurora"
-        data-nz-shape="default"
-        data-nz-density="comfortable"
-        data-nz-motion="standard"
-        data-nz-color-system="hex"
-      >
-        {children}
-      </body>
+      <body className="h-full">{children}</body>
     </html>
   );
 }

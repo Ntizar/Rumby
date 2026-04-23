@@ -1,86 +1,67 @@
-# Architecture
+# Rumby · Arquitectura v1
 
-## Goal
+Rumby es un comparador multimodal honesto. Para un origen y un destino reales,
+muestra **todas las formas plausibles de llegar** con tiempo, coste y nivel de
+confianza por cada modo. Lo que no es real, va etiquetado como `estimado`.
 
-Construir una plataforma de movilidad multimodal que pueda crecer por ciudades, operadores y tipos de datos sin acoplar el producto a un feed concreto.
+## Capas
 
-## Layers
-
-1. `web app`
-2. `domain model`
-3. `connectors`
-4. `routing and scoring`
-5. `assistant layer`
-
-## Recommended flow
-
-```text
-user intent
-  -> location resolution
-  -> planner request (depart at / arrive by)
-  -> route engine
-  -> realtime enrichment
-  -> incident enrichment
-  -> itinerary scoring
-  -> explanation layer
-  -> presentation
+```
+src/
+  app/                         Next.js (export estatico, GitHub Pages)
+  components/
+    map/                       Mapa MapLibre (fondo a pantalla completa)
+    planner/                   UI mobile-first del planner (search + sheet)
+  lib/
+    domain/                    Tipos puros: Place, TripIntent, ModeOption, ...
+    geocode/                   Geocoder + hook de busqueda (Nominatim por ahora)
+    connectors/                Adaptadores a fuentes externas (GBFS, EMT, ...)
+    modes/                     Un archivo por modo de transporte
+    routing/                   Compone los modos en una lista comparable
+    catalog/                   Definicion de ciudades soportadas
 ```
 
-## Domain entities
+## Pieza central: el "modo"
 
-Las primeras entidades candidatas son:
-
-- `Place`
-- `Stop`
-- `Station`
-- `Route`
-- `Trip`
-- `Vehicle`
-- `Incident`
-- `Availability`
-- `Itinerary`
-- `Leg`
-
-## Connector contract
-
-Cada fuente externa deberia implementarse detras de un contrato comun.
+Cada modo de transporte vive aislado en `src/lib/modes/<id>.ts` y solo expone:
 
 ```ts
-type Connector = {
-  id: string;
-  city: string;
-  category: "transit-static" | "transit-realtime" | "traffic" | "bike" | "parking" | "taxi" | "other";
-  fetch: () => Promise<unknown>;
-  normalize: (input: unknown) => Promise<unknown>;
+export const xMode: ModeEstimator = {
+  id: "x",
+  estimate(trip, ctx) { ... return ModeOption | null }
 };
 ```
 
-## Current bootstrap modules
+`null` significa "este modo no aplica para este viaje". La UI no lo pinta.
 
-- `src/lib/domain/types.ts`: entidades base del planner
-- `src/lib/domain/madrid-snapshot.ts`: snapshot tipado para demos y UI inicial
-- `src/lib/connectors/madrid/emt.ts`: conector base EMT
-- `src/lib/connectors/madrid/incidents.ts`: conectores base de incidencias Madrid y DGT
-- `src/components/map/madrid-map.tsx`: mapa real con MapLibre
+`ModeOption` siempre incluye:
 
-## Recommended routing strategy
+- `durationMin`, `costEur`, `distanceKm`, `co2Grams`
+- `confidence`: `real` (motor o API en vivo), `estimated` (heuristica) o `unavailable`
+- `dataSource`: explica de donde sale el dato
+- `warnings?`: avisos honestos al usuario
 
-- `OpenTripPlanner` como primera opcion para planner multimodal con GTFS y GTFS-RT
-- `OSM` como base geoespacial
-- `MapLibre` para la experiencia de mapa web
-- `DATEX II` y feeds municipales como enriquecimiento operacional
+## Pieza central: el "conector"
 
-## AI boundaries
+Los conectores viven en `src/lib/connectors/<city>/<source>.ts` y abstraen
+una fuente externa concreta (BiciMAD GBFS, EMT MobilityLabs, DGT DATEX II,
+etc.). Tienen `fetch` + cache propio y devuelven datos normalizados que
+los modos consumen.
 
-La IA puede:
+Los conectores fallan silenciosamente: si una fuente no responde, devuelven
+`null` y el modo cae a su estimacion. La app nunca se rompe por una API caida.
 
-- explicar incidencias
-- resumir tradeoffs
-- comparar itinerarios
-- recomendar acciones sobre datos ya calculados
+## Compose
 
-La IA no debe:
+`lib/routing/plan-trip.ts` corre todos los modos en paralelo, descarta los que
+devuelven `null` y los ordena por duracion. Esa lista alimenta el bottom sheet.
 
-- inventar rutas base
-- ser la fuente primaria de estado de red
-- sustituir la normalizacion de conectores
+## Por que es facil hacerlo crecer
+
+- **Anadir un modo** -> archivo nuevo en `lib/modes/` + 1 linea en `registry.ts`.
+- **Anadir una API real** -> archivo nuevo en `lib/connectors/<city>/` y
+  consumirlo desde el modo correspondiente.
+- **Anadir una ciudad** -> archivo nuevo en `lib/catalog/cities/<slug>.ts` y un
+  `<slug>-planner.tsx` que reuse `MadridPlanner` como referencia.
+
+La UI no se toca al anadir conectores: solo cambia `confidence` y `dataSource`.

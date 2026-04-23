@@ -1,37 +1,31 @@
-# How To Add A City
+# Como anadir una ciudad
 
-## Goal
+Rumby empieza por Madrid pero la arquitectura ya esta lista para crecer.
 
-Anadir una ciudad nueva sin acoplarla a Madrid ni romper el producto base.
+## 1. Define la ciudad
 
-## Steps
+`src/lib/catalog/cities/<slug>.ts` con bbox, centro y modos activos.
 
-1. crea un archivo nuevo en `src/lib/catalog/cities/`
-2. exporta una `CityDefinition`
-3. anadela al catalogo en `src/lib/catalog/index.ts`
-4. documenta las fuentes oficiales de la ciudad en `docs/`
-5. clasifica cada fuente como `ready`, `research` o `planned`
+## 2. Geocoder
 
-## Minimum checklist
+Si reutilizas Nominatim, copia el patron de `madrid` y cambia el `viewbox`
+para acotar al area de la ciudad nueva. Si la ciudad tiene un geocoder
+oficial mejor (p.ej. CartoBCN), crea un conector aparte y un nuevo
+`searchPlaces<X>` paralelo a `searchPlacesMadrid`.
 
-- nombre de la ciudad
-- pais
-- resumen corto
-- modos iniciales
-- prioridades de producto
-- lista de fuentes con url, formato, auth y nota de uso
+## 3. Conectores de movilidad
 
-## Rules
+Anade los conectores reales que existan para esa ciudad bajo
+`src/lib/connectors/<slug>/`. Cada modo decidira si los usa.
 
-- no mezcles feeds no verificados con feeds listos para MVP
-- no metas claves ni secretos en el repo
-- no copies conectores de otra ciudad si el contrato del proveedor cambia
-- deja clara la licencia y la atribucion requerida cuando exista
+## 4. Modos especificos
 
-## When a city is ready for MVP
+La mayoria de los modos (caminar, bici, taxi, coche, scooter, moto) son
+genericos y reutilizables. Si una ciudad tiene un modo unico (vaporetto,
+funicular, etc.), crea `src/lib/modes/<modo>.ts` y registralo en `registry.ts`.
 
-Una ciudad esta lista para MVP cuando tiene como minimo:
+## 5. UI
 
-- una fuente estatica de transporte fiable
-- una fuente de contexto o incidencia util
-- una historia de producto clara sobre por que esa ciudad merece ser la siguiente
+Reusa `MadridPlanner` como referencia. La UI es agnostica: solo necesita un
+`citySlug` y un geocoder. La proxima evolucion natural es extraer un
+`<CityPlanner city="..." />` configurable.

@@ -1,235 +1,350 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { MadridMap } from "@/components/map/madrid-map";
-import { madridPlaces, resolveMadridPlace } from "@/lib/catalog/cities/madrid-places";
+import type { ModeOption, Place, TripIntent } from "@/lib/domain/types";
+import { usePlaceSearch } from "@/lib/geocode/use-place-search";
+import { allModes } from "@/lib/modes/registry";
+import { planTrip } from "@/lib/routing/plan-trip";
 
-type PlanningMode = "depart" | "arrive";
-type FavoriteMode = "walk" | "bus" | "metro" | "rail" | "bike" | "taxi" | "moto";
+type ActiveField = "origin" | "destination" | null;
 
-const favoriteModeOptions: Array<{ id: FavoriteMode; label: string }> = [
-  { id: "walk", label: "Caminar" },
-  { id: "bus", label: "Bus / EMT" },
-  { id: "metro", label: "Metro" },
-  { id: "rail", label: "Cercanias" },
-  { id: "bike", label: "Bici" },
-  { id: "taxi", label: "Taxi / VTC" },
-  { id: "moto", label: "Moto sharing" },
+const MODE_FILTERS: Array<{ id: string; label: string; emoji: string }> = [
+  { id: "walk", label: "A pie", emoji: "🚶" },
+  { id: "metro", label: "Metro", emoji: "🚇" },
+  { id: "bus", label: "Bus", emoji: "🚌" },
+  { id: "rail", label: "Cercanias", emoji: "🚆" },
+  { id: "bike", label: "Bici", emoji: "🚲" },
+  { id: "scooter", label: "Patinete", emoji: "🛴" },
+  { id: "moto", label: "Moto", emoji: "🛵" },
+  { id: "taxi", label: "Taxi", emoji: "🚕" },
+  { id: "car", label: "Coche", emoji: "🚗" },
 ];
 
-const initialModes: Record<FavoriteMode, boolean> = {
-  walk: true,
-  bus: true,
-  metro: false,
-  rail: false,
-  bike: false,
-  taxi: false,
-  moto: false,
-};
-
 export function MadridPlanner() {
-  const [originInput, setOriginInput] = useState("Puerta del Sol");
-  const [destinationInput, setDestinationInput] = useState(
-    "Aeropuerto Adolfo Suarez Madrid-Barajas T4",
+  const [originText, setOriginText] = useState("");
+  const [destinationText, setDestinationText] = useState("");
+  const [origin, setOrigin] = useState<Place | null>(null);
+  const [destination, setDestination] = useState<Place | null>(null);
+  const [activeField, setActiveField] = useState<ActiveField>(null);
+  const [enabledModes, setEnabledModes] = useState<Set<string>>(
+    () => new Set(allModes.map((m) => m.id)),
   );
-  const [planningMode, setPlanningMode] = useState<PlanningMode>("depart");
-  const [dateTime, setDateTime] = useState("2026-04-24T08:15");
-  const [favoriteModes, setFavoriteModes] = useState(initialModes);
+  const [results, setResults] = useState<ModeOption[]>([]);
+  const [computing, setComputing] = useState(false);
+  const [selectedModeId, setSelectedModeId] = useState<string | null>(null);
 
-  const origin = useMemo(() => resolveMadridPlace(originInput), [originInput]);
-  const destination = useMemo(() => resolveMadridPlace(destinationInput), [destinationInput]);
-  const selectedModes = favoriteModeOptions.filter((mode) => favoriteModes[mode.id]);
-  const readyForRealRouting = Boolean(origin && destination && selectedModes.length > 0);
+  // Autocomplete activo segun campo enfocado.
+  const activeQuery = activeField === "origin" ? originText : activeField === "destination" ? destinationText : "";
+  const { results: suggestions, loading: suggestionsLoading } = usePlaceSearch(activeQuery);
 
-  function toggleMode(mode: FavoriteMode) {
-    setFavoriteModes((current) => ({
-      ...current,
-      [mode]: !current[mode],
-    }));
+  // Recalcular opciones cuando cambian inputs o filtros.
+  const trip: TripIntent | null = useMemo(() => {
+    if (!origin || !destination) return null;
+    return {
+      origin,
+      destination,
+      when: new Date().toISOString(),
+      whenKind: "depart",
+    };
+  }, [origin, destination]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!trip) {
+      const t = window.setTimeout(() => setResults([]), 0);
+      return () => window.clearTimeout(t);
+    }
+    const startT = window.setTimeout(() => setComputing(true), 0);
+    planTrip(trip, { citySlug: "madrid" }, Array.from(enabledModes)).then((opts) => {
+      if (!cancelled) {
+        setResults(opts);
+        setComputing(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(startT);
+    };
+  }, [trip, enabledModes]);
+
+  function pickPlace(p: Place) {
+    if (activeField === "origin") {
+      setOrigin(p);
+      setOriginText(p.name);
+    } else if (activeField === "destination") {
+      setDestination(p);
+      setDestinationText(p.name);
+    }
+    setActiveField(null);
   }
 
-  function swapPlaces() {
-    setOriginInput(destinationInput);
-    setDestinationInput(originInput);
+  function swap() {
+    setOrigin(destination);
+    setDestination(origin);
+    setOriginText(destinationText);
+    setDestinationText(originText);
   }
+
+  function toggleMode(id: string) {
+    setEnabledModes((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function clearField(field: "origin" | "destination") {
+    if (field === "origin") {
+      setOriginText("");
+      setOrigin(null);
+    } else {
+      setDestinationText("");
+      setDestination(null);
+    }
+  }
+
+  const showSuggestions = activeField !== null && activeQuery.trim().length >= 3;
 
   return (
-    <main className="rumby-page">
-      <section className="nz-section">
-        <div className="nz-container nz-stack nz-stack--lg">
-          <header className="rumby-topbar">
-            <div className="nz-stack nz-stack--sm">
-              <div className="nz-cluster">
-                <span className="nz-badge nz-badge--brand nz-badge--no-dot">Rumby</span>
-                <span className="nz-badge nz-badge--accent nz-badge--no-dot">Madrid</span>
+    <div className="rumby-shell">
+      <MadridMap origin={origin} destination={destination} />
+
+      {/* Top: brand + search */}
+      <div className="rumby-top rumby-glass-strong">
+        <div className="rumby-brand">
+          <span className="rumby-brand-emoji" aria-hidden>
+            🧭
+          </span>
+          <span>Rumby</span>
+          <span className="rumby-brand-tag">Madrid</span>
+        </div>
+
+        <div className="rumby-fields">
+          <button
+            className="rumby-swap"
+            type="button"
+            onClick={swap}
+            aria-label="Intercambiar origen y destino"
+          >
+            ↕
+          </button>
+
+          <FieldRow
+            emoji="📍"
+            placeholder="Donde estas"
+            value={originText}
+            onChange={(v) => {
+              setOriginText(v);
+              setActiveField("origin");
+              if (origin && origin.name !== v) setOrigin(null);
+            }}
+            onFocus={() => setActiveField("origin")}
+            onClear={() => clearField("origin")}
+          />
+          <FieldRow
+            emoji="🎯"
+            placeholder="A donde vas"
+            value={destinationText}
+            onChange={(v) => {
+              setDestinationText(v);
+              setActiveField("destination");
+              if (destination && destination.name !== v) setDestination(null);
+            }}
+            onFocus={() => setActiveField("destination")}
+            onClear={() => clearField("destination")}
+          />
+        </div>
+
+        {showSuggestions && (
+          <div className="rumby-glass rumby-suggest" role="listbox">
+            {suggestionsLoading && suggestions.length === 0 && (
+              <div className="rumby-suggest-empty">Buscando…</div>
+            )}
+            {!suggestionsLoading && suggestions.length === 0 && (
+              <div className="rumby-suggest-empty">Sin resultados en Madrid</div>
+            )}
+            {suggestions.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className="rumby-suggest-item"
+                onClick={() => pickPlace(s)}
+              >
+                <span className="rumby-suggest-name">{s.name}</span>
+                {s.context && <span className="rumby-suggest-context">{s.context}</span>}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom sheet: filters + results */}
+      <div className="rumby-sheet">
+        <div className="rumby-sheet-card rumby-glass-strong">
+          <div className="rumby-sheet-handle" aria-hidden />
+
+          <div className="rumby-sheet-header">
+            <div>
+              <div className="rumby-sheet-title">
+                {trip ? "Como llegar" : "Elige origen y destino"}
               </div>
-              <div>
-                <h1 className="nz-text-h2">Planner primero</h1>
-                <p className="nz-text-muted">
-                  El foco ahora es preparar bien la consulta del viaje. Sin rutas inventadas y con
-                  tema claro por defecto.
-                </p>
+              <div className="rumby-sheet-sub">
+                {trip
+                  ? computing
+                    ? "Calculando opciones…"
+                    : `${results.length} opciones disponibles`
+                  : "Busca direcciones reales en Madrid"}
               </div>
-            </div>
-          </header>
-
-          <div className="rumby-planner-layout">
-            <section className="nz-card">
-              <form className="nz-form-grid nz-form-grid--2" onSubmit={(event) => event.preventDefault()}>
-                <h2 className="nz-text-h4 nz-field--full">Configura tu viaje</h2>
-
-                <label className="nz-field nz-field--full">
-                  <span className="nz-field__label">Donde estas</span>
-                  <input
-                    className="nz-input nz-search"
-                    list="madrid-places"
-                    value={originInput}
-                    onChange={(event) => setOriginInput(event.target.value)}
-                    placeholder="Ejemplo: Puerta del Sol"
-                  />
-                </label>
-
-                <label className="nz-field nz-field--full">
-                  <span className="nz-field__label">A donde quieres ir</span>
-                  <input
-                    className="nz-input nz-search"
-                    list="madrid-places"
-                    value={destinationInput}
-                    onChange={(event) => setDestinationInput(event.target.value)}
-                    placeholder="Ejemplo: Atocha"
-                  />
-                </label>
-
-                <div className="nz-field nz-field--full">
-                  <button className="nz-btn nz-btn--ghost" type="button" onClick={swapPlaces}>
-                    Intercambiar origen y destino
-                  </button>
-                </div>
-
-                <div className="nz-field nz-field--full">
-                  <span className="nz-field__label">Quiero</span>
-                  <div className="nz-segmented">
-                    <label className="nz-segmented__option">
-                      <input
-                        type="radio"
-                        name="planning-mode"
-                        checked={planningMode === "depart"}
-                        onChange={() => setPlanningMode("depart")}
-                      />
-                      <span>Salir a esta hora</span>
-                    </label>
-                    <label className="nz-segmented__option">
-                      <input
-                        type="radio"
-                        name="planning-mode"
-                        checked={planningMode === "arrive"}
-                        onChange={() => setPlanningMode("arrive")}
-                      />
-                      <span>Llegar antes de esta hora</span>
-                    </label>
-                  </div>
-                </div>
-
-                <label className="nz-field nz-field--full">
-                  <span className="nz-field__label">
-                    {planningMode === "depart" ? "Hora de salida" : "Hora limite de llegada"}
-                  </span>
-                  <input
-                    className="nz-input"
-                    type="datetime-local"
-                    value={dateTime}
-                    onChange={(event) => setDateTime(event.target.value)}
-                  />
-                </label>
-
-                <div className="nz-field nz-field--full">
-                  <span className="nz-field__label">Metodos favoritos</span>
-                  <div className="rumby-mode-grid">
-                    {favoriteModeOptions.map((mode) => (
-                      <label key={mode.id} className="nz-check nz-check--accent">
-                        <input
-                          type="checkbox"
-                          checked={favoriteModes[mode.id]}
-                          onChange={() => toggleMode(mode.id)}
-                        />
-                        <span>{mode.label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="nz-callout nz-callout--info nz-field--full">
-                  Puedes escribir libremente. El mapa se actualiza cuando el texto coincide con uno de
-                  los lugares conocidos de Madrid. El siguiente paso real es conectar geocoding y
-                  routing, no inventar una ruta.
-                </div>
-
-                <datalist id="madrid-places">
-                  {madridPlaces.map((place) => (
-                    <option key={place.id} value={place.name} />
-                  ))}
-                </datalist>
-              </form>
-            </section>
-
-            <div className="nz-stack nz-stack--md">
-              <section className="nz-map nz-map--hero rumby-map-shell">
-                <MadridMap origin={origin} destination={destination} />
-
-                <div className="nz-map__overlay nz-map__overlay--top-left">
-                  <article className="nz-card">
-                    <strong>Estado de lugares</strong>
-                    <p className="nz-text-muted">
-                      {origin ? `Origen resuelto: ${origin.name}` : "Origen pendiente de resolver"}
-                    </p>
-                    <p className="nz-text-muted">
-                      {destination
-                        ? `Destino resuelto: ${destination.name}`
-                        : "Destino pendiente de resolver"}
-                    </p>
-                  </article>
-                </div>
-              </section>
-
-              <article className="nz-card">
-                <div className="nz-stack nz-stack--sm">
-                  <span className="nz-badge nz-badge--accent nz-badge--no-dot">Resultado honesto</span>
-                  <h2 className="nz-text-h4">La mejor manera exacta de ir aun no esta calculada</h2>
-                  <p className="nz-text-muted">
-                    Este planner ya recoge bien la intencion del viaje, tus preferencias y la vista de
-                    mapa. Pero hasta conectar un motor de rutas real, Rumby no te va a inventar una
-                    recomendacion exacta.
-                  </p>
-                  <div className="nz-stack nz-stack--sm">
-                    <div className="nz-alert">
-                      <strong>Origen</strong>
-                      <div>{origin ? origin.name : "Pendiente de geocoding real"}</div>
-                    </div>
-                    <div className="nz-alert">
-                      <strong>Destino</strong>
-                      <div>{destination ? destination.name : "Pendiente de geocoding real"}</div>
-                    </div>
-                    <div className="nz-alert">
-                      <strong>Favoritos</strong>
-                      <div>
-                        {selectedModes.length > 0
-                          ? selectedModes.map((mode) => mode.label).join(", ")
-                          : "Selecciona al menos un metodo favorito"}
-                      </div>
-                    </div>
-                    <div className={readyForRealRouting ? "nz-callout nz-callout--tip" : "nz-callout nz-callout--warn"}>
-                      {readyForRealRouting
-                        ? "La consulta ya esta bien formada para conectarla al routing real. El siguiente paso es integrar geocoding y un motor multimodal para darte la mejor opcion de verdad."
-                        : "Todavia falta resolver origen y destino conocidos, o elegir al menos un metodo favorito, antes de poder lanzar una consulta real."}
-                    </div>
-                  </div>
-                </div>
-              </article>
             </div>
           </div>
+
+          <div className="rumby-filter-row" role="group" aria-label="Filtrar por modo">
+            {MODE_FILTERS.map((m) => {
+              const active = enabledModes.has(m.id);
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  className="rumby-filter-chip"
+                  data-active={active}
+                  onClick={() => toggleMode(m.id)}
+                  aria-pressed={active}
+                >
+                  <span aria-hidden>{m.emoji}</span>
+                  <span>{m.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="rumby-sheet-body">
+            {!trip && <EmptyState />}
+            {trip && !computing && results.length === 0 && (
+              <div className="rumby-empty">
+                <span className="rumby-empty-emoji" aria-hidden>
+                  🤷
+                </span>
+                <div>Ningun modo aplica para esta distancia. Prueba a activar mas filtros.</div>
+              </div>
+            )}
+            {results.map((r) => (
+              <ResultCard
+                key={r.mode}
+                option={r}
+                selected={selectedModeId === r.mode}
+                onSelect={() => setSelectedModeId(r.mode)}
+              />
+            ))}
+          </div>
         </div>
-      </section>
-    </main>
+      </div>
+    </div>
+  );
+}
+
+function FieldRow({
+  emoji,
+  placeholder,
+  value,
+  onChange,
+  onFocus,
+  onClear,
+}: {
+  emoji: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  onFocus: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <div className="rumby-field">
+      <span className="rumby-field-emoji" aria-hidden>
+        {emoji}
+      </span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={onFocus}
+        autoComplete="off"
+        spellCheck={false}
+      />
+      {value && (
+        <button
+          type="button"
+          className="rumby-clear"
+          onClick={onClear}
+          aria-label="Limpiar"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EmptyState() {
+  return (
+    <div className="rumby-empty">
+      <span className="rumby-empty-emoji" aria-hidden>
+        🗺️
+      </span>
+      <div>
+        Escribe direcciones reales arriba.
+        <br />
+        Rumby compara <strong>todas las formas</strong> de llegar.
+      </div>
+    </div>
+  );
+}
+
+function ResultCard({
+  option,
+  selected,
+  onSelect,
+}: {
+  option: ModeOption;
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="rumby-result"
+      data-selected={selected}
+      onClick={onSelect}
+    >
+      <span className="rumby-result-emoji" aria-hidden>
+        {option.emoji}
+      </span>
+      <span className="rumby-result-main">
+        <span className="rumby-result-label">{option.label}</span>
+        <span className="rumby-result-meta">
+          <span className="rumby-chip">{option.distanceKm.toFixed(1)} km</span>
+          <span
+            className="rumby-chip"
+            data-tone={option.confidence === "real" ? "ok" : "warn"}
+          >
+            {option.confidence === "real" ? "en vivo" : "estimado"}
+          </span>
+          {option.hint && <span>{option.hint}</span>}
+        </span>
+      </span>
+      <span className="rumby-result-side">
+        <span className="rumby-result-time">{option.durationMin} min</span>
+        <span className="rumby-result-cost">
+          {option.costEur === null
+            ? "—"
+            : option.costEur === 0
+              ? "Gratis"
+              : `${option.costEur.toFixed(2)} €`}
+        </span>
+      </span>
+    </button>
   );
 }
