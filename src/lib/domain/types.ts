@@ -56,6 +56,21 @@ export type ModeOption = {
   warnings?: string[];
   /** Detalles desplegables (paradas, lineas, links). */
   details?: ModeDetail[];
+  /** Geometria GeoJSON de la ruta (LineString [lon,lat][]). null = sin ruta dibujable. */
+  geometry?: [number, number][] | null;
+  /** Acciones/deep-links a apps reales para usar este modo. */
+  actions?: ModeAction[];
+};
+
+export type ModeAction = {
+  /** Texto del boton ("Google Maps", "Cabify", "Renfe Cercanias"). */
+  label: string;
+  /** Emoji o icono corto. */
+  icon: string;
+  /** URL universal (deep-link movil + fallback web). */
+  url: string;
+  /** Categoria visual: primaria (operador) o secundaria (mapas, taxi). */
+  kind?: "primary" | "secondary";
 };
 
 export type ModeDetail = {

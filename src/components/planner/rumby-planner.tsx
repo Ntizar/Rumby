@@ -5,13 +5,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CityMap } from "@/components/map/city-map";
 import { cities, getCity } from "@/lib/catalog/cities";
 import { getCurrentLocation } from "@/lib/geocode/geolocation";
+import { reverseGeocode } from "@/lib/geocode/reverse";
 import { usePlaceSearch } from "@/lib/geocode/use-place-search";
-import type { ModeOption, Place, TripIntent } from "@/lib/domain/types";
+import type { ModeAction, ModeOption, Place, TripIntent } from "@/lib/domain/types";
 import { allModes } from "@/lib/modes/registry";
+import { useOperators } from "@/lib/nap/use-operators";
 import { planTrip } from "@/lib/routing/plan-trip";
 
 type ActiveField = "origin" | "destination" | null;
 type SheetState = "collapsed" | "half" | "full";
+type PendingClick = { lng: number; lat: number } | null;
 
 const MODE_FILTERS: Array<{ id: string; label: string; emoji: string }> = [
   { id: "walk", label: "A pie", emoji: "🚶" },
@@ -46,6 +49,7 @@ export function RumbyPlanner() {
   const [sheet, setSheet] = useState<SheetState>("collapsed");
   const [locating, setLocating] = useState<ActiveField>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [pendingClick, setPendingClick] = useState<PendingClick>(null);
 
   const activeQuery =
     activeField === "origin" ? originText : activeField === "destination" ? destinationText : "";
@@ -53,6 +57,8 @@ export function RumbyPlanner() {
     activeQuery,
     city.viewbox,
   );
+
+  const { operators } = useOperators(city.napAreaUrbanaId);
 
   const trip: TripIntent | null = useMemo(() => {
     if (!origin || !destination) return null;
@@ -67,15 +73,17 @@ export function RumbyPlanner() {
   // Solo calcula cuando el usuario pulsa "Buscar ruta".
   useEffect(() => {
     let cancelled = false;
-    if (!trip || !searchTriggered) {
-      return;
-    }
+    if (!trip || !searchTriggered) return;
     const startT = window.setTimeout(() => setComputing(true), 0);
     planTrip(trip, { citySlug }, Array.from(enabledModes)).then((opts) => {
       if (!cancelled) {
         setResults(opts);
         setComputing(false);
         setSheet("full");
+        // Auto-selecciona el primer modo para mostrar su geometria.
+        if (opts.length > 0) {
+          setSelectedModeId(opts[0].mode);
+        }
       }
     });
     return () => {
@@ -87,7 +95,10 @@ export function RumbyPlanner() {
   // Si cambia origen/destino, invalido la busqueda anterior.
   useEffect(() => {
     if (searchTriggered) {
-      const t = window.setTimeout(() => setSearchTriggered(false), 0);
+      const t = window.setTimeout(() => {
+        setSearchTriggered(false);
+        setSelectedModeId(null);
+      }, 0);
       return () => window.clearTimeout(t);
     }
   }, [origin, destination]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -101,6 +112,7 @@ export function RumbyPlanner() {
       setDestinationText("");
       setResults([]);
       setSearchTriggered(false);
+      setSelectedModeId(null);
       setSheet("collapsed");
     }, 0);
     return () => window.clearTimeout(t);
@@ -163,18 +175,102 @@ export function RumbyPlanner() {
     }
   }
 
+  async function setFromMapClick(field: "origin" | "destination", lng: number, lat: number) {
+    setPendingClick(null);
+    const place = (await reverseGeocode(lat, lng)) ?? {
+      id: `${lat.toFixed(5)},${lng.toFixed(5)}`,
+      name: `Ubicación ${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+      lat,
+      lon: lng,
+      kind: "address" as const,
+    };
+    if (field === "origin") {
+      setOrigin(place);
+      setOriginText(place.name);
+    } else {
+      setDestination(place);
+      setDestinationText(place.name);
+    }
+  }
+
+  async function onPinDragEnd(
+    which: "origin" | "destination",
+    lngLat: { lng: number; lat: number },
+  ) {
+    await setFromMapClick(which, lngLat.lng, lngLat.lat);
+  }
+
   function triggerSearch() {
     if (!origin || !destination) return;
     setSearchTriggered(true);
     setSheet("full");
   }
 
+  async function locateMyselfOnMap() {
+    setErrorMsg(null);
+    try {
+      const fix = await getCurrentLocation();
+      // Si no hay origen, ponme como origen. Si ya hay origen, solo centra.
+      if (!origin) {
+        setOrigin(fix.place);
+        setOriginText(fix.place.name);
+      }
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Error al obtener ubicacion");
+    }
+  }
+
   const showSuggestions = activeField !== null && activeQuery.trim().length >= 3;
   const canSearch = !!(origin && destination);
+  const selectedOption =
+    selectedModeId !== null ? results.find((r) => r.mode === selectedModeId) ?? null : null;
+  const routeGeometry = selectedOption?.geometry ?? null;
 
   return (
     <div className="rumby-shell" data-sheet={sheet}>
-      <CityMap origin={origin} destination={destination} center={city.center} zoom={city.zoom} />
+      <CityMap
+        origin={origin}
+        destination={destination}
+        center={city.center}
+        zoom={city.zoom}
+        routeGeometry={routeGeometry}
+        onMapClick={(ll) => setPendingClick(ll)}
+        onPinDragEnd={onPinDragEnd}
+        onLocateMe={locateMyselfOnMap}
+      />
+
+      {/* Popup tras tap en mapa */}
+      {pendingClick && (
+        <div className="rumby-pinpop rumby-glass-strong" role="dialog">
+          <div className="rumby-pinpop-title">¿Qué hago con este punto?</div>
+          <div className="rumby-pinpop-coords">
+            {pendingClick.lat.toFixed(4)}, {pendingClick.lng.toFixed(4)}
+          </div>
+          <div className="rumby-pinpop-row">
+            <button
+              type="button"
+              className="rumby-pinpop-btn"
+              onClick={() => setFromMapClick("origin", pendingClick.lng, pendingClick.lat)}
+            >
+              📍 Origen
+            </button>
+            <button
+              type="button"
+              className="rumby-pinpop-btn"
+              onClick={() => setFromMapClick("destination", pendingClick.lng, pendingClick.lat)}
+            >
+              🎯 Destino
+            </button>
+          </div>
+          <button
+            type="button"
+            className="rumby-pinpop-cancel"
+            onClick={() => setPendingClick(null)}
+          >
+            Cancelar
+          </button>
+        </div>
+      )}
 
       {/* Top: brand + city + search */}
       <div className="rumby-top rumby-glass-strong">
@@ -288,18 +384,18 @@ export function RumbyPlanner() {
               <div className="rumby-sheet-title">
                 {searchTriggered
                   ? computing
-                    ? "Calculando…"
+                    ? "Calculando rutas reales…"
                     : `${results.length} formas de llegar`
                   : trip
                     ? "Listo para buscar"
-                    : "Elige origen y destino"}
+                    : `Rumby · ${city.name}`}
               </div>
               <div className="rumby-sheet-sub">
                 {searchTriggered && results.length > 0
-                  ? "Tocaste algun chip para filtrar"
+                  ? "Pulsa una opción para ver la ruta y abrir la app"
                   : trip
                     ? "Pulsa Buscar ruta arriba"
-                    : `Direcciones reales en ${city.name}`}
+                    : "Toca el mapa o escribe direcciones"}
               </div>
             </div>
             <button
@@ -331,16 +427,23 @@ export function RumbyPlanner() {
           </div>
 
           <div className="rumby-sheet-body">
-            {!searchTriggered && <EmptyState hasTrip={!!trip} cityName={city.name} />}
+            {!searchTriggered && (
+              <>
+                <EmptyState hasTrip={!!trip} cityName={city.name} />
+                {operators.length > 0 && (
+                  <OperatorsPanel cityName={city.name} operators={operators} />
+                )}
+              </>
+            )}
             {searchTriggered && !computing && results.length === 0 && (
               <div className="rumby-empty">
                 <span className="rumby-empty-emoji" aria-hidden>
                   🤷
                 </span>
                 <div>
-                  Ningun modo aplica para esta distancia.
+                  Ningún modo aplica para esta distancia.
                   <br />
-                  Activa mas filtros o cambia el destino.
+                  Activa más filtros o cambia el destino.
                 </div>
               </div>
             )}
@@ -365,7 +468,7 @@ function cycleSheet(s: SheetState): SheetState {
 }
 
 function sheetIcon(s: SheetState) {
-  return s === "full" ? "▾" : s === "half" ? "▴" : "▴";
+  return s === "full" ? "▾" : "▴";
 }
 
 function FieldRow({
@@ -438,11 +541,59 @@ function EmptyState({ hasTrip, cityName }: { hasTrip: boolean; cityName: string 
           </>
         ) : (
           <>
-            Escribe direcciones o usa <strong>📍</strong>.
+            Toca el mapa o usa <strong>📍</strong> para empezar.
             <br />
             Rumby compara <strong>todas las formas</strong> de llegar.
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+function OperatorsPanel({
+  cityName,
+  operators,
+}: {
+  cityName: string;
+  operators: { id: number; name: string; url: string | null; modes: string[] }[];
+}) {
+  return (
+    <div className="rumby-operators">
+      <div className="rumby-operators-title">
+        Operadores en {cityName}{" "}
+        <span className="rumby-chip" data-tone="ok">
+          NAP en vivo
+        </span>
+      </div>
+      <div className="rumby-operators-grid">
+        {operators.slice(0, 8).map((op) => {
+          const inner = (
+            <>
+              <span className="rumby-operator-name">{op.name}</span>
+              {op.modes.length > 0 && (
+                <span className="rumby-operator-modes">
+                  {op.modes.slice(0, 2).join(", ")}
+                </span>
+              )}
+            </>
+          );
+          return op.url ? (
+            <a
+              key={op.id}
+              className="rumby-operator-card"
+              href={op.url}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {inner}
+            </a>
+          ) : (
+            <div key={op.id} className="rumby-operator-card">
+              {inner}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -457,42 +608,72 @@ function ResultCard({
   selected: boolean;
   onSelect: () => void;
 }) {
+  const actions = option.actions ?? [];
+  const primary = actions[0];
+  const rest = actions.slice(1);
+
   return (
-    <button
-      type="button"
-      className="rumby-result"
-      data-selected={selected}
-      onClick={onSelect}
-    >
-      <span className="rumby-result-emoji" aria-hidden>
-        {option.emoji}
-      </span>
-      <span className="rumby-result-main">
-        <span className="rumby-result-label">{option.label}</span>
-        <span className="rumby-result-meta">
-          <span className="rumby-chip">{option.distanceKm.toFixed(1)} km</span>
-          <span
-            className="rumby-chip"
-            data-tone={option.confidence === "real" ? "ok" : "warn"}
-          >
-            {option.confidence === "real" ? "en vivo" : "estimado"}
+    <div className="rumby-result-wrap" data-selected={selected}>
+      <button
+        type="button"
+        className="rumby-result"
+        data-selected={selected}
+        onClick={onSelect}
+      >
+        <span className="rumby-result-emoji" aria-hidden>
+          {option.emoji}
+        </span>
+        <span className="rumby-result-main">
+          <span className="rumby-result-label">{option.label}</span>
+          <span className="rumby-result-meta">
+            <span className="rumby-chip">{option.distanceKm.toFixed(1)} km</span>
+            <span
+              className="rumby-chip"
+              data-tone={option.confidence === "real" ? "ok" : "warn"}
+            >
+              {option.confidence === "real" ? "en vivo" : "estimado"}
+            </span>
           </span>
           {option.hint && <span className="rumby-result-hint">{option.hint}</span>}
+          {option.warnings && option.warnings.length > 0 && (
+            <span className="rumby-result-warning">⚠ {option.warnings[0]}</span>
+          )}
+          <span className="rumby-result-source">📊 {option.dataSource}</span>
         </span>
-        {option.warnings && option.warnings.length > 0 && (
-          <span className="rumby-result-warning">⚠ {option.warnings[0]}</span>
-        )}
-      </span>
-      <span className="rumby-result-side">
-        <span className="rumby-result-time">{option.durationMin} min</span>
-        <span className="rumby-result-cost">
-          {option.costEur === null
-            ? "—"
-            : option.costEur === 0
-              ? "Gratis"
-              : `${option.costEur.toFixed(2)} €`}
+        <span className="rumby-result-side">
+          <span className="rumby-result-time">{option.durationMin} min</span>
+          <span className="rumby-result-cost">
+            {option.costEur === null
+              ? "—"
+              : option.costEur === 0
+                ? "Gratis"
+                : `${option.costEur.toFixed(2)} €`}
+          </span>
         </span>
-      </span>
-    </button>
+      </button>
+      {selected && actions.length > 0 && (
+        <div className="rumby-result-actions">
+          {primary && <ActionLink action={primary} primary />}
+          {rest.map((a, i) => (
+            <ActionLink key={`${a.label}-${i}`} action={a} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ActionLink({ action, primary }: { action: ModeAction; primary?: boolean }) {
+  return (
+    <a
+      className="rumby-action"
+      data-primary={primary ? "true" : "false"}
+      href={action.url}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      <span aria-hidden>{action.icon}</span>
+      <span>{action.label}</span>
+    </a>
   );
 }

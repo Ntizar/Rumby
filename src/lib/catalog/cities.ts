@@ -4,6 +4,9 @@
  * - `viewbox`: caja para acotar geocoding (Nominatim format: left,top,right,bottom).
  * - `center` y `zoom`: vista inicial del mapa.
  * - `connectors`: ids de conectores reales activos para esa ciudad.
+ * - `napAreaUrbanaId`: id de Area Urbana en NAP (catalogo nacional). Permite
+ *   pedir operadores y feeds GTFS-RT por ciudad.
+ * - `navitiaCoverage`: id de coverage en Navitia.io (cuando lo soporta).
  */
 export type CityProfile = {
   slug: string;
@@ -14,6 +17,8 @@ export type CityProfile = {
   zoom: number;
   viewbox: string; // left,top,right,bottom
   connectors: string[];
+  napAreaUrbanaId: number;
+  navitiaCoverage: string | null;
 };
 
 export const cities: CityProfile[] = [
@@ -26,6 +31,8 @@ export const cities: CityProfile[] = [
     zoom: 11.6,
     viewbox: "-3.9,40.6,-3.5,40.3",
     connectors: ["bicimad-gbfs", "nominatim"],
+    napAreaUrbanaId: 1,
+    navitiaCoverage: "fr-idf", // Navitia espana parcial; pendiente verificar
   },
   {
     slug: "barcelona",
@@ -36,6 +43,8 @@ export const cities: CityProfile[] = [
     zoom: 12,
     viewbox: "2.05,41.5,2.3,41.32",
     connectors: ["bicing-gbfs", "nominatim"],
+    napAreaUrbanaId: 2,
+    navitiaCoverage: null,
   },
   {
     slug: "valencia",
@@ -46,6 +55,8 @@ export const cities: CityProfile[] = [
     zoom: 12,
     viewbox: "-0.45,39.55,-0.3,39.4",
     connectors: ["valenbisi-gbfs", "nominatim"],
+    napAreaUrbanaId: 3,
+    navitiaCoverage: null,
   },
   {
     slug: "sevilla",
@@ -56,6 +67,8 @@ export const cities: CityProfile[] = [
     zoom: 12,
     viewbox: "-6.05,37.45,-5.9,37.32",
     connectors: ["sevici-gbfs", "nominatim"],
+    napAreaUrbanaId: 4,
+    navitiaCoverage: null,
   },
   {
     slug: "bilbao",
@@ -66,6 +79,8 @@ export const cities: CityProfile[] = [
     zoom: 12,
     viewbox: "-3.0,43.32,-2.85,43.22",
     connectors: ["nominatim"],
+    napAreaUrbanaId: 5,
+    navitiaCoverage: null,
   },
 ];
 

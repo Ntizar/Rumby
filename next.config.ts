@@ -1,15 +1,16 @@
 import type { NextConfig } from "next";
 
-const isGitHubPages = process.env.GITHUB_ACTIONS === "true";
-
+/**
+ * Rumby corre como app dinamica en Vercel.
+ * Necesitamos route handlers (/api/nap/*, /api/dgt/*, etc.) para no exponer
+ * claves de NAP/Navitia/DGT en el cliente.
+ *
+ * El export estatico de GitHub Pages queda deprecado.
+ */
 const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true,
   images: {
     unoptimized: true,
   },
-  basePath: isGitHubPages ? "/Rumby" : "",
-  assetPrefix: isGitHubPages ? "/Rumby/" : undefined,
 };
 
 export default nextConfig;

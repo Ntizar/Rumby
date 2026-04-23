@@ -1,10 +1,13 @@
 import { allModes } from "@/lib/modes/registry";
 import type { ModeContext } from "@/lib/modes/types";
 import type { ModeOption, TripIntent } from "@/lib/domain/types";
+import { buildActions } from "@/lib/deeplinks";
 
 /**
  * Ejecuta todos los estimadores de modos para un trip y devuelve la lista
  * filtrada (solo modos aplicables) y ordenada por duracion ascendente.
+ *
+ * Adjunta deep-links a apps reales por modo despues de calcular.
  */
 export async function planTrip(
   trip: TripIntent,
@@ -19,5 +22,9 @@ export async function planTrip(
 
   return results
     .filter((option): option is ModeOption => option !== null)
+    .map((option) => ({
+      ...option,
+      actions: buildActions(option.mode, trip.origin, trip.destination, ctx.citySlug),
+    }))
     .sort((a, b) => a.durationMin - b.durationMin);
 }

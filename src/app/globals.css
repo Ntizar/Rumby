@@ -578,6 +578,198 @@ button {
 
 /* === DESKTOP LAYOUT === */
 
+/* ---------- Pin popup tras tap en mapa ---------- */
+.rumby-pinpop {
+  position: fixed;
+  z-index: 30;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 320px);
+  padding: 16px;
+  border-radius: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
+}
+
+.rumby-pinpop-title {
+  font-weight: 600;
+  font-size: 0.98rem;
+  color: var(--rumby-ink);
+}
+
+.rumby-pinpop-coords {
+  font-size: 0.78rem;
+  color: var(--rumby-ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rumby-pinpop-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rumby-pinpop-btn {
+  appearance: none;
+  border: 1px solid var(--rumby-line);
+  background: var(--rumby-surface);
+  color: var(--rumby-ink);
+  border-radius: 12px;
+  padding: 12px 10px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  min-height: 44px;
+  cursor: pointer;
+  transition: transform 120ms ease, background 160ms ease;
+}
+
+.rumby-pinpop-btn:hover {
+  background: var(--rumby-surface-strong);
+}
+
+.rumby-pinpop-btn:active {
+  transform: scale(0.97);
+}
+
+.rumby-pinpop-cancel {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: var(--rumby-ink-muted);
+  font-size: 0.85rem;
+  padding: 6px;
+  cursor: pointer;
+}
+
+/* ---------- Locate FAB del mapa ---------- */
+.rumby-locate-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--rumby-surface, #fff);
+  color: var(--rumby-ink);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
+  z-index: 5;
+  transition: transform 120ms ease;
+}
+
+.rumby-locate-fab:active {
+  transform: scale(0.92);
+}
+
+/* ---------- Acciones por opción de modo ---------- */
+.rumby-result-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rumby-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 6px 8px;
+}
+
+.rumby-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rumby-line);
+  background: var(--rumby-surface);
+  color: var(--rumby-ink);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 36px;
+  transition: background 160ms ease, transform 120ms ease;
+}
+
+.rumby-action:hover {
+  background: var(--rumby-surface-strong);
+}
+
+.rumby-action:active {
+  transform: scale(0.97);
+}
+
+.rumby-action[data-primary="true"] {
+  background: var(--rumby-accent, #2563eb);
+  border-color: transparent;
+  color: #fff;
+}
+
+/* ---------- Card de operadores NAP ---------- */
+.rumby-operators {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--rumby-surface);
+  border: 1px solid var(--rumby-line);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.rumby-operators-title {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--rumby-ink);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rumby-operators-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rumby-operator-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--rumby-line);
+  background: var(--rumby-surface-strong, rgba(0, 0, 0, 0.02));
+  color: var(--rumby-ink);
+  text-decoration: none;
+  font-size: 0.82rem;
+  min-height: 44px;
+  transition: transform 120ms ease;
+}
+
+.rumby-operator-card:hover {
+  transform: translateY(-1px);
+}
+
+.rumby-operator-name {
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.rumby-operator-modes {
+  font-size: 0.72rem;
+  color: var(--rumby-ink-muted);
+}
+
 @media (min-width: 64rem) {
   .rumby-top {
     top: 18px;
