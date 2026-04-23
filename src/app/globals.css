@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  min-height: 100%;
+  background: #04101f;
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background: #04101f;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.nz {
+  --nz-color-brand: #4f8cff;
+  --nz-color-accent: #ff8b38;
+  --nz-gradient-aurora: linear-gradient(135deg, #4f8cff 0%, #7c4dff 48%, #ff8b38 100%);
+}
+
+.travely-shell {
+  background:
+    radial-gradient(circle at top, rgba(79, 140, 255, 0.16), transparent 30%),
+    linear-gradient(180deg, #050d18 0%, #081523 40%, #07111d 100%);
+}
+
+.travely-map-shell {
+  min-height: 34rem;
+  overflow: hidden;
+}
+
+.travely-map-canvas {
+  width: 100%;
+  height: 100%;
+  min-height: 34rem;
+}
+
+.travely-map-canvas .maplibregl-ctrl-group {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(5, 13, 24, 0.72);
+  box-shadow: none;
+}
+
+.travely-map-canvas .maplibregl-ctrl button {
+  background: transparent;
+  color: white;
+}
+
+.travely-map-canvas .maplibregl-popup-content {
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  background: rgba(5, 13, 24, 0.88);
+  color: white;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+}
+
+.travely-map-canvas .maplibregl-popup-tip {
+  border-top-color: rgba(5, 13, 24, 0.88);
+  border-bottom-color: rgba(5, 13, 24, 0.88);
+}
