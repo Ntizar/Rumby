@@ -57,7 +57,7 @@ export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
     });
 
     map.on("load", () => {
-      map.addSource("travely-route", {
+      map.addSource("rumby-route", {
         type: "geojson",
         data: {
           type: "Feature",
@@ -76,9 +76,9 @@ export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
       });
 
       map.addLayer({
-        id: "travely-route-line",
+        id: "rumby-route-line",
         type: "line",
-        source: "travely-route",
+        source: "rumby-route",
         paint: {
           "line-color": "#7c4dff",
           "line-width": 5,
@@ -92,5 +92,5 @@ export function MadridMap({ origin, destination, incidents }: MadridMapProps) {
     };
   }, [destination, incidents, origin]);
 
-  return <div ref={mapRef} className="travely-map-canvas" aria-label="Mapa multimodal de Madrid" />;
+  return <div ref={mapRef} className="rumby-map-canvas" aria-label="Mapa multimodal de Madrid" />;
 }

@@ -13,9 +13,9 @@ export default function PlannerPage() {
   const bestOption = madridSnapshot.alternatives[0];
 
   return (
-    <main className="nz-app-shell travely-shell" style={{ minHeight: "100vh" }}>
+    <main className="nz-app-shell rumby-shell" style={{ minHeight: "100vh" }}>
       <aside className="nz-app-shell__sidebar">
-        <strong>Travely</strong>
+        <strong>Rumby</strong>
         <nav className="nz-stack">
           <span className="nz-nav-section">Madrid</span>
           <Link className="nz-nav-item is-active" href="/planner">
@@ -100,7 +100,7 @@ export default function PlannerPage() {
               </button>
             </form>
 
-            <section className="nz-map nz-map--hero nz-map--glass travely-map-shell">
+            <section className="nz-map nz-map--hero nz-map--glass rumby-map-shell">
               <MadridMap
                 destination={madridSnapshot.destination}
                 incidents={madridSnapshot.incidents}

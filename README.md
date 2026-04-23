@@ -1,6 +1,6 @@
-# Travely
+# Rumby
 
-Travely es una web de movilidad multimodal pensada para responder bien cuatro preguntas del viajero:
+Rumby es una web de movilidad multimodal pensada para responder bien cuatro preguntas del viajero:
 
 - donde estoy
 - a donde quiero ir
@@ -15,7 +15,7 @@ La idea no es construir otro visor de rutas. La apuesta es crear una plataforma 
 
 ## Vision
 
-Travely arranca en **Madrid** porque permite validar una primera capa potente con:
+Rumby arranca en **Madrid** porque permite validar una primera capa potente con:
 
 - bus urbano oficial
 - bici publica
@@ -237,7 +237,7 @@ Estado: `bootstrap`
 
 El repo ya deja listo:
 
-- proyecto real `Travely` separado del control plane
+- proyecto real `Rumby` separado del control plane
 - base web con Next.js
 - primera homepage de vision
 - catalogo inicial de Madrid

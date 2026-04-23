@@ -8,8 +8,8 @@ const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
   },
-  basePath: isGitHubPages ? "/Travely" : "",
-  assetPrefix: isGitHubPages ? "/Travely/" : undefined,
+  basePath: isGitHubPages ? "/Rumby" : "",
+  assetPrefix: isGitHubPages ? "/Rumby/" : undefined,
 };
 
 export default nextConfig;

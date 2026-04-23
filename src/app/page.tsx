@@ -42,7 +42,7 @@ export default function Home() {
                 La macro web para decidir la <span className="nz-accent">movilidad multimodal</span>.
               </h1>
               <p className="nz-hero__sub">
-                Travely nace para explicar mejor el viaje: ruta, contexto, incidencias, riesgo y
+                Rumby nace para explicar mejor el viaje: ruta, contexto, incidencias, riesgo y
                 mejor alternativa actual. Empieza en Madrid y se prepara desde el dia uno para crecer
                 por ciudades y conectores.
               </p>
@@ -109,10 +109,10 @@ export default function Home() {
           <div className="nz-grid nz-grid--2" style={{ alignItems: "start" }}>
             <article className="nz-card">
               <div className="nz-stack nz-stack--md">
-                <span className="nz-badge nz-badge--accent nz-badge--no-dot">Product vision</span>
-                <h2 className="nz-text-h2">Una UX que piense como copiloto del viaje</h2>
-                <p className="nz-text-muted">
-                  Travely no quiere listar opciones sin criterio. Quiere decirte cual parece mas
+                  <span className="nz-badge nz-badge--accent nz-badge--no-dot">Product vision</span>
+                  <h2 className="nz-text-h2">Una UX que piense como copiloto del viaje</h2>
+                  <p className="nz-text-muted">
+                  Rumby no quiere listar opciones sin criterio. Quiere decirte cual parece mas
                   fiable, que esta cambiando ahora mismo y por que te conviene salir, esperar o
                   cambiar de modo antes de llegar tarde.
                 </p>

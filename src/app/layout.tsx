@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Travely",
+  title: "Rumby",
   description:
     "Multimodal mobility platform starting in Madrid with modular city and data-source support.",
 };
