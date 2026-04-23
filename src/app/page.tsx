@@ -1,5 +1,5 @@
-import { MadridPlanner } from "@/components/planner/madrid-planner";
+import { RumbyPlanner } from "@/components/planner/rumby-planner";
 
 export default function Home() {
-  return <MadridPlanner />;
+  return <RumbyPlanner />;
 }

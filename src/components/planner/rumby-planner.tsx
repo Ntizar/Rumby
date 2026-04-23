@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
-import { MadridMap } from "@/components/map/madrid-map";
-import type { ModeOption, Place, TripIntent } from "@/lib/domain/types";
+import { CityMap } from "@/components/map/city-map";
+import { cities, getCity } from "@/lib/catalog/cities";
+import { getCurrentLocation } from "@/lib/geocode/geolocation";
 import { usePlaceSearch } from "@/lib/geocode/use-place-search";
+import type { ModeOption, Place, TripIntent } from "@/lib/domain/types";
 import { allModes } from "@/lib/modes/registry";
 import { planTrip } from "@/lib/routing/plan-trip";
 
 type ActiveField = "origin" | "destination" | null;
+type SheetState = "collapsed" | "half" | "full";
 
 const MODE_FILTERS: Array<{ id: string; label: string; emoji: string }> = [
   { id: "walk", label: "A pie", emoji: "🚶" },
   { id: "metro", label: "Metro", emoji: "🚇" },
   { id: "bus", label: "Bus", emoji: "🚌" },
-  { id: "rail", label: "Cercanias", emoji: "🚆" },
+  { id: "rail", label: "Tren", emoji: "🚆" },
   { id: "bike", label: "Bici", emoji: "🚲" },
   { id: "scooter", label: "Patinete", emoji: "🛴" },
   { id: "moto", label: "Moto", emoji: "🛵" },
@@ -22,24 +25,35 @@ const MODE_FILTERS: Array<{ id: string; label: string; emoji: string }> = [
   { id: "car", label: "Coche", emoji: "🚗" },
 ];
 
-export function MadridPlanner() {
+export function RumbyPlanner() {
+  const [citySlug, setCitySlug] = useState("madrid");
+  const city = getCity(citySlug);
+
   const [originText, setOriginText] = useState("");
   const [destinationText, setDestinationText] = useState("");
   const [origin, setOrigin] = useState<Place | null>(null);
   const [destination, setDestination] = useState<Place | null>(null);
   const [activeField, setActiveField] = useState<ActiveField>(null);
+
   const [enabledModes, setEnabledModes] = useState<Set<string>>(
     () => new Set(allModes.map((m) => m.id)),
   );
+
   const [results, setResults] = useState<ModeOption[]>([]);
   const [computing, setComputing] = useState(false);
   const [selectedModeId, setSelectedModeId] = useState<string | null>(null);
+  const [searchTriggered, setSearchTriggered] = useState(false);
+  const [sheet, setSheet] = useState<SheetState>("collapsed");
+  const [locating, setLocating] = useState<ActiveField>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Autocomplete activo segun campo enfocado.
-  const activeQuery = activeField === "origin" ? originText : activeField === "destination" ? destinationText : "";
-  const { results: suggestions, loading: suggestionsLoading } = usePlaceSearch(activeQuery);
+  const activeQuery =
+    activeField === "origin" ? originText : activeField === "destination" ? destinationText : "";
+  const { results: suggestions, loading: suggestionsLoading } = usePlaceSearch(
+    activeQuery,
+    city.viewbox,
+  );
 
-  // Recalcular opciones cuando cambian inputs o filtros.
   const trip: TripIntent | null = useMemo(() => {
     if (!origin || !destination) return null;
     return {
@@ -50,24 +64,47 @@ export function MadridPlanner() {
     };
   }, [origin, destination]);
 
+  // Solo calcula cuando el usuario pulsa "Buscar ruta".
   useEffect(() => {
     let cancelled = false;
-    if (!trip) {
-      const t = window.setTimeout(() => setResults([]), 0);
-      return () => window.clearTimeout(t);
+    if (!trip || !searchTriggered) {
+      return;
     }
     const startT = window.setTimeout(() => setComputing(true), 0);
-    planTrip(trip, { citySlug: "madrid" }, Array.from(enabledModes)).then((opts) => {
+    planTrip(trip, { citySlug }, Array.from(enabledModes)).then((opts) => {
       if (!cancelled) {
         setResults(opts);
         setComputing(false);
+        setSheet("full");
       }
     });
     return () => {
       cancelled = true;
       window.clearTimeout(startT);
     };
-  }, [trip, enabledModes]);
+  }, [trip, enabledModes, searchTriggered, citySlug]);
+
+  // Si cambia origen/destino, invalido la busqueda anterior.
+  useEffect(() => {
+    if (searchTriggered) {
+      const t = window.setTimeout(() => setSearchTriggered(false), 0);
+      return () => window.clearTimeout(t);
+    }
+  }, [origin, destination]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cambio de ciudad: limpia.
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      setOrigin(null);
+      setDestination(null);
+      setOriginText("");
+      setDestinationText("");
+      setResults([]);
+      setSearchTriggered(false);
+      setSheet("collapsed");
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [citySlug]);
 
   function pickPlace(p: Place) {
     if (activeField === "origin") {
@@ -106,20 +143,58 @@ export function MadridPlanner() {
     }
   }
 
+  async function locateMe(field: "origin" | "destination") {
+    setErrorMsg(null);
+    setLocating(field);
+    try {
+      const fix = await getCurrentLocation();
+      if (field === "origin") {
+        setOrigin(fix.place);
+        setOriginText(fix.place.name);
+      } else {
+        setDestination(fix.place);
+        setDestinationText(fix.place.name);
+      }
+      setActiveField(null);
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : "Error al obtener ubicacion");
+    } finally {
+      setLocating(null);
+    }
+  }
+
+  function triggerSearch() {
+    if (!origin || !destination) return;
+    setSearchTriggered(true);
+    setSheet("full");
+  }
+
   const showSuggestions = activeField !== null && activeQuery.trim().length >= 3;
+  const canSearch = !!(origin && destination);
 
   return (
-    <div className="rumby-shell">
-      <MadridMap origin={origin} destination={destination} />
+    <div className="rumby-shell" data-sheet={sheet}>
+      <CityMap origin={origin} destination={destination} center={city.center} zoom={city.zoom} />
 
-      {/* Top: brand + search */}
+      {/* Top: brand + city + search */}
       <div className="rumby-top rumby-glass-strong">
         <div className="rumby-brand">
           <span className="rumby-brand-emoji" aria-hidden>
             🧭
           </span>
           <span>Rumby</span>
-          <span className="rumby-brand-tag">Madrid</span>
+          <select
+            className="rumby-city-select"
+            value={citySlug}
+            onChange={(e) => setCitySlug(e.target.value)}
+            aria-label="Cambiar ciudad"
+          >
+            {cities.map((c) => (
+              <option key={c.slug} value={c.slug}>
+                {c.emoji} {c.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="rumby-fields">
@@ -143,6 +218,8 @@ export function MadridPlanner() {
             }}
             onFocus={() => setActiveField("origin")}
             onClear={() => clearField("origin")}
+            onUseLocation={() => locateMe("origin")}
+            locating={locating === "origin"}
           />
           <FieldRow
             emoji="🎯"
@@ -155,8 +232,21 @@ export function MadridPlanner() {
             }}
             onFocus={() => setActiveField("destination")}
             onClear={() => clearField("destination")}
+            onUseLocation={() => locateMe("destination")}
+            locating={locating === "destination"}
           />
         </div>
+
+        {errorMsg && <div className="rumby-error">⚠ {errorMsg}</div>}
+
+        <button
+          type="button"
+          className="rumby-search-btn"
+          onClick={triggerSearch}
+          disabled={!canSearch}
+        >
+          {canSearch ? "🔍 Buscar ruta" : "Elige origen y destino"}
+        </button>
 
         {showSuggestions && (
           <div className="rumby-glass rumby-suggest" role="listbox">
@@ -164,7 +254,7 @@ export function MadridPlanner() {
               <div className="rumby-suggest-empty">Buscando…</div>
             )}
             {!suggestionsLoading && suggestions.length === 0 && (
-              <div className="rumby-suggest-empty">Sin resultados en Madrid</div>
+              <div className="rumby-suggest-empty">Sin resultados</div>
             )}
             {suggestions.map((s) => (
               <button
@@ -181,24 +271,44 @@ export function MadridPlanner() {
         )}
       </div>
 
-      {/* Bottom sheet: filters + results */}
+      {/* Bottom sheet con 3 alturas */}
       <div className="rumby-sheet">
         <div className="rumby-sheet-card rumby-glass-strong">
-          <div className="rumby-sheet-handle" aria-hidden />
+          <button
+            type="button"
+            className="rumby-sheet-handle-btn"
+            onClick={() => setSheet(cycleSheet)}
+            aria-label="Cambiar tamano de la lista"
+          >
+            <div className="rumby-sheet-handle" aria-hidden />
+          </button>
 
           <div className="rumby-sheet-header">
             <div>
               <div className="rumby-sheet-title">
-                {trip ? "Como llegar" : "Elige origen y destino"}
+                {searchTriggered
+                  ? computing
+                    ? "Calculando…"
+                    : `${results.length} formas de llegar`
+                  : trip
+                    ? "Listo para buscar"
+                    : "Elige origen y destino"}
               </div>
               <div className="rumby-sheet-sub">
-                {trip
-                  ? computing
-                    ? "Calculando opciones…"
-                    : `${results.length} opciones disponibles`
-                  : "Busca direcciones reales en Madrid"}
+                {searchTriggered && results.length > 0
+                  ? "Tocaste algun chip para filtrar"
+                  : trip
+                    ? "Pulsa Buscar ruta arriba"
+                    : `Direcciones reales en ${city.name}`}
               </div>
             </div>
+            <button
+              type="button"
+              className="rumby-sheet-toggle"
+              onClick={() => setSheet(cycleSheet)}
+            >
+              {sheetIcon(sheet)}
+            </button>
           </div>
 
           <div className="rumby-filter-row" role="group" aria-label="Filtrar por modo">
@@ -221,28 +331,41 @@ export function MadridPlanner() {
           </div>
 
           <div className="rumby-sheet-body">
-            {!trip && <EmptyState />}
-            {trip && !computing && results.length === 0 && (
+            {!searchTriggered && <EmptyState hasTrip={!!trip} cityName={city.name} />}
+            {searchTriggered && !computing && results.length === 0 && (
               <div className="rumby-empty">
                 <span className="rumby-empty-emoji" aria-hidden>
                   🤷
                 </span>
-                <div>Ningun modo aplica para esta distancia. Prueba a activar mas filtros.</div>
+                <div>
+                  Ningun modo aplica para esta distancia.
+                  <br />
+                  Activa mas filtros o cambia el destino.
+                </div>
               </div>
             )}
-            {results.map((r) => (
-              <ResultCard
-                key={r.mode}
-                option={r}
-                selected={selectedModeId === r.mode}
-                onSelect={() => setSelectedModeId(r.mode)}
-              />
-            ))}
+            {searchTriggered &&
+              results.map((r) => (
+                <ResultCard
+                  key={r.mode}
+                  option={r}
+                  selected={selectedModeId === r.mode}
+                  onSelect={() => setSelectedModeId(r.mode)}
+                />
+              ))}
           </div>
         </div>
       </div>
     </div>
   );
+}
+
+function cycleSheet(s: SheetState): SheetState {
+  return s === "collapsed" ? "half" : s === "half" ? "full" : "collapsed";
+}
+
+function sheetIcon(s: SheetState) {
+  return s === "full" ? "▾" : s === "half" ? "▴" : "▴";
 }
 
 function FieldRow({
@@ -252,6 +375,8 @@ function FieldRow({
   onChange,
   onFocus,
   onClear,
+  onUseLocation,
+  locating,
 }: {
   emoji: string;
   placeholder: string;
@@ -259,13 +384,17 @@ function FieldRow({
   onChange: (v: string) => void;
   onFocus: () => void;
   onClear: () => void;
+  onUseLocation: () => void;
+  locating: boolean;
 }) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="rumby-field">
       <span className="rumby-field-emoji" aria-hidden>
         {emoji}
       </span>
       <input
+        ref={inputRef}
         type="text"
         value={value}
         placeholder={placeholder}
@@ -274,30 +403,46 @@ function FieldRow({
         autoComplete="off"
         spellCheck={false}
       />
-      {value && (
+      {value ? (
+        <button type="button" className="rumby-clear" onClick={onClear} aria-label="Limpiar">
+          ×
+        </button>
+      ) : (
         <button
           type="button"
-          className="rumby-clear"
-          onClick={onClear}
-          aria-label="Limpiar"
+          className="rumby-locate"
+          onClick={onUseLocation}
+          aria-label="Usar mi ubicacion"
+          disabled={locating}
+          title="Usar mi ubicacion"
         >
-          ×
+          {locating ? "…" : "📍"}
         </button>
       )}
     </div>
   );
 }
 
-function EmptyState() {
+function EmptyState({ hasTrip, cityName }: { hasTrip: boolean; cityName: string }) {
   return (
     <div className="rumby-empty">
       <span className="rumby-empty-emoji" aria-hidden>
-        🗺️
+        {hasTrip ? "🚀" : "🗺️"}
       </span>
       <div>
-        Escribe direcciones reales arriba.
-        <br />
-        Rumby compara <strong>todas las formas</strong> de llegar.
+        {hasTrip ? (
+          <>
+            Todo listo en <strong>{cityName}</strong>.
+            <br />
+            Pulsa <strong>Buscar ruta</strong> arriba.
+          </>
+        ) : (
+          <>
+            Escribe direcciones o usa <strong>📍</strong>.
+            <br />
+            Rumby compara <strong>todas las formas</strong> de llegar.
+          </>
+        )}
       </div>
     </div>
   );
@@ -332,8 +477,11 @@ function ResultCard({
           >
             {option.confidence === "real" ? "en vivo" : "estimado"}
           </span>
-          {option.hint && <span>{option.hint}</span>}
+          {option.hint && <span className="rumby-result-hint">{option.hint}</span>}
         </span>
+        {option.warnings && option.warnings.length > 0 && (
+          <span className="rumby-result-warning">⚠ {option.warnings[0]}</span>
+        )}
       </span>
       <span className="rumby-result-side">
         <span className="rumby-result-time">{option.durationMin} min</span>

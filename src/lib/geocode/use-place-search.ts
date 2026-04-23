@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 
-import { searchPlacesMadrid, type GeocodeResult } from "@/lib/geocode/nominatim";
+import { searchPlaces, type GeocodeResult } from "@/lib/geocode/nominatim";
 
 /**
- * Hook simple con debounce para autocompletar Madrid via Nominatim.
+ * Hook simple con debounce para autocompletar via Nominatim acotado por viewbox.
  */
-export function usePlaceSearch(query: string, debounceMs = 400) {
+export function usePlaceSearch(query: string, viewbox: string, debounceMs = 400) {
   const [results, setResults] = useState<GeocodeResult[]>([]);
   const [loading, setLoading] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
@@ -28,7 +28,7 @@ export function usePlaceSearch(query: string, debounceMs = 400) {
 
     const handle = window.setTimeout(async () => {
       try {
-        const items = await searchPlacesMadrid(query, controller.signal);
+        const items = await searchPlaces(query, viewbox, controller.signal);
         if (!controller.signal.aborted) {
           setResults(items);
         }
@@ -44,7 +44,7 @@ export function usePlaceSearch(query: string, debounceMs = 400) {
       window.clearTimeout(handle);
       controller.abort();
     };
-  }, [query, debounceMs]);
+  }, [query, viewbox, debounceMs]);
 
   return { results, loading };
 }

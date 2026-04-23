@@ -4,10 +4,9 @@ import type { Place } from "@/lib/domain/types";
  * Geocoder publico Nominatim (OpenStreetMap).
  * Sin claves. Limite ~1 req/s. Apto para autocompletar con debounce.
  *
- * Para Madrid acotamos el viewbox para resultados mas relevantes.
+ * Acepta un viewbox para acotar resultados a una ciudad concreta.
  */
 
-const MADRID_VIEWBOX = "-3.9,40.6,-3.5,40.3"; // left,top,right,bottom
 const ENDPOINT = "https://nominatim.openstreetmap.org/search";
 
 export type GeocodeResult = Place & {
@@ -25,8 +24,9 @@ type NominatimItem = {
   address?: Record<string, string>;
 };
 
-export async function searchPlacesMadrid(
+export async function searchPlaces(
   query: string,
+  viewbox: string,
   signal?: AbortSignal,
 ): Promise<GeocodeResult[]> {
   const q = query.trim();
@@ -38,16 +38,13 @@ export async function searchPlacesMadrid(
   url.searchParams.set("addressdetails", "1");
   url.searchParams.set("limit", "6");
   url.searchParams.set("countrycodes", "es");
-  url.searchParams.set("viewbox", MADRID_VIEWBOX);
+  url.searchParams.set("viewbox", viewbox);
   url.searchParams.set("bounded", "1");
   url.searchParams.set("accept-language", "es");
 
   const res = await fetch(url.toString(), {
     signal,
-    headers: {
-      // Nominatim requiere identificacion del cliente.
-      "Accept": "application/json",
-    },
+    headers: { Accept: "application/json" },
   });
 
   if (!res.ok) return [];
