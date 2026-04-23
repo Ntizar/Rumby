@@ -10,11 +10,14 @@
   color-scheme: light;
   --rumby-bg: #eef2f7;
   --rumby-surface: rgba(255, 255, 255, 0.72);
-  --rumby-surface-strong: rgba(255, 255, 255, 0.92);
+  --rumby-surface-strong: rgba(255, 255, 255, 0.94);
   --rumby-border: rgba(15, 23, 42, 0.08);
   --rumby-border-strong: rgba(15, 23, 42, 0.16);
+  --rumby-line: rgba(15, 23, 42, 0.08);
+  --rumby-ink: #0f172a;
   --rumby-text: #0f172a;
   --rumby-text-muted: #475569;
+  --rumby-ink-muted: #475569;
   --rumby-accent: #2563eb;
   --rumby-accent-soft: rgba(37, 99, 235, 0.12);
   --rumby-shadow: 0 18px 50px rgba(15, 23, 42, 0.12);
@@ -34,13 +37,14 @@ body {
   background: var(--rumby-bg);
   color: var(--rumby-text);
   font-family: var(--font-geist-sans), system-ui, -apple-system, "Segoe UI", sans-serif;
+  overscroll-behavior: none;
 }
 
 body {
   background:
-    radial-gradient(60% 40% at 20% 0%, rgba(37, 99, 235, 0.18), transparent 60%),
-    radial-gradient(50% 35% at 100% 30%, rgba(249, 115, 22, 0.16), transparent 60%),
-    radial-gradient(60% 50% at 50% 100%, rgba(16, 185, 129, 0.14), transparent 60%),
+    radial-gradient(60% 40% at 20% 0%, rgba(37, 99, 235, 0.14), transparent 60%),
+    radial-gradient(50% 35% at 100% 30%, rgba(249, 115, 22, 0.12), transparent 60%),
+    radial-gradient(60% 50% at 50% 100%, rgba(16, 185, 129, 0.10), transparent 60%),
     var(--rumby-bg);
   background-attachment: fixed;
 }
@@ -54,13 +58,13 @@ button {
   font: inherit;
 }
 
-/* === SHELL === */
+/* ============================================================
+   SHELL (layout fijo con mapa siempre visible)
+   ============================================================ */
 
 .rumby-shell {
   position: fixed;
   inset: 0;
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 }
 
@@ -74,7 +78,20 @@ button {
   outline: none;
 }
 
-/* === GLASS PRIMITIVES === */
+.rumby-map-layer .maplibregl-canvas {
+  cursor: crosshair;
+}
+
+.rumby-map-layer .maplibregl-marker {
+  cursor: grab;
+}
+.rumby-map-layer .maplibregl-marker:active {
+  cursor: grabbing;
+}
+
+/* ============================================================
+   GLASS PRIMITIVES
+   ============================================================ */
 
 .rumby-glass {
   background: var(--rumby-surface);
@@ -94,44 +111,82 @@ button {
   box-shadow: var(--rumby-shadow);
 }
 
-/* === TOP CARD (search) === */
+/* ============================================================
+   TOP: barra de búsqueda (colapsable)
+   ============================================================ */
 
 .rumby-top {
   position: absolute;
-  top: max(env(safe-area-inset-top), 12px);
-  left: 12px;
-  right: 12px;
+  top: max(env(safe-area-inset-top), 10px);
+  left: 10px;
+  right: 10px;
   z-index: 30;
-  padding: 14px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
+  gap: 10px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  transition: max-height 0.2s ease;
+}
+
+.rumby-top[data-collapsed="true"] {
+  max-height: 56px;
+  overflow: hidden;
+}
+
+.rumby-brand-row {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
 .rumby-brand {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 700;
-  font-size: 18px;
+  font-size: 17px;
   letter-spacing: -0.01em;
 }
 
 .rumby-brand-emoji {
-  font-size: 22px;
+  font-size: 20px;
 }
 
-.rumby-brand-tag {
+.rumby-city-select {
   margin-left: auto;
-  font-size: 12px;
-  color: var(--rumby-text-muted);
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
   font-weight: 500;
+  color: var(--rumby-text);
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
 }
+
+.rumby-collapse-top {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--rumby-text-muted);
+}
+
+/* ============================================================
+   FIELDS: origen, paradas, destino
+   ============================================================ */
 
 .rumby-fields {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   position: relative;
 }
 
@@ -139,9 +194,9 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.85);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.92);
   border: 1px solid var(--rumby-border);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
@@ -161,10 +216,18 @@ button {
   min-width: 0;
 }
 
-.rumby-field-emoji {
-  font-size: 18px;
-  width: 24px;
-  text-align: center;
+.rumby-field-badge {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: 12px;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 }
 
 .rumby-clear {
@@ -175,15 +238,38 @@ button {
   line-height: 1;
   cursor: pointer;
   padding: 4px;
+  min-width: 28px;
+  min-height: 28px;
+}
+
+.rumby-locate {
+  border: 0;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 8px;
+  color: var(--rumby-accent);
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.rumby-locate:hover {
+  background: var(--rumby-accent-soft);
+}
+
+.rumby-locate:disabled {
+  opacity: 0.5;
+  cursor: wait;
 }
 
 .rumby-swap {
   position: absolute;
-  right: 14px;
+  right: 10px;
   top: 50%;
   transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   border: 1px solid var(--rumby-border);
   background: white;
@@ -191,12 +277,142 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 15px;
   box-shadow: var(--rumby-shadow-soft);
   z-index: 2;
 }
 
-/* === SUGGESTIONS === */
+/* ============================================================
+   MINOR ACTIONS (añadir parada, hora)
+   ============================================================ */
+
+.rumby-actions-row {
+  display: flex;
+  gap: 6px;
+}
+
+.rumby-minor-btn {
+  flex: 1;
+  padding: 10px 8px;
+  border-radius: 12px;
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rumby-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 40px;
+}
+
+.rumby-minor-btn:hover:not(:disabled) {
+  background: var(--rumby-accent-soft);
+  border-color: var(--rumby-accent);
+}
+
+.rumby-minor-btn[aria-pressed="true"] {
+  background: var(--rumby-accent-soft);
+  border-color: var(--rumby-accent);
+  color: var(--rumby-accent);
+}
+
+.rumby-minor-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   TIME PANEL
+   ============================================================ */
+
+.rumby-time-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid var(--rumby-border);
+}
+
+.rumby-time-tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.rumby-time-tab {
+  flex: 1;
+  padding: 8px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--rumby-border);
+  background: transparent;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--rumby-text-muted);
+}
+
+.rumby-time-tab[data-active="true"] {
+  background: var(--rumby-accent);
+  color: white;
+  border-color: var(--rumby-accent);
+}
+
+.rumby-time-input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--rumby-border);
+  background: white;
+  font-size: 15px;
+  font-family: inherit;
+}
+
+/* ============================================================
+   SEARCH BUTTON
+   ============================================================ */
+
+.rumby-search-btn {
+  width: 100%;
+  padding: 14px;
+  border-radius: 12px;
+  border: 0;
+  background: var(--rumby-accent);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28);
+  min-height: 48px;
+}
+
+.rumby-search-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.32);
+}
+
+.rumby-search-btn:disabled {
+  background: rgba(15, 23, 42, 0.12);
+  color: var(--rumby-text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.rumby-error {
+  background: rgba(239, 68, 68, 0.12);
+  color: #b91c1c;
+  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+/* ============================================================
+   SUGGESTIONS (autocomplete)
+   ============================================================ */
 
 .rumby-suggest {
   margin-top: 4px;
@@ -204,7 +420,7 @@ button {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 60vh;
+  max-height: 40vh;
   overflow-y: auto;
 }
 
@@ -213,11 +429,12 @@ button {
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 12px;
+  border-radius: 10px;
   border: 0;
   background: transparent;
   text-align: left;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .rumby-suggest-item:hover,
@@ -228,7 +445,7 @@ button {
 
 .rumby-suggest-name {
   font-weight: 600;
-  font-size: 15px;
+  font-size: 14px;
 }
 
 .rumby-suggest-context {
@@ -243,127 +460,187 @@ button {
   font-size: 14px;
 }
 
-/* === CITY SELECT === */
+/* ============================================================
+   MAP FAB + POPUP
+   ============================================================ */
 
-.rumby-city-select {
-  margin-left: auto;
-  border: 1px solid var(--rumby-border);
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 999px;
-  padding: 4px 10px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--rumby-text);
+.rumby-locate-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 220px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: var(--rumby-ink);
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  appearance: none;
-  -webkit-appearance: none;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25);
+  z-index: 15;
+  transition: bottom 0.3s ease;
 }
 
-.rumby-city-select:focus-visible {
-  outline: 2px solid var(--rumby-accent);
-  outline-offset: 2px;
+.rumby-shell[data-panel="hidden"] .rumby-locate-fab {
+  bottom: 100px;
 }
 
-/* === LOCATE / SEARCH BUTTONS === */
-
-.rumby-locate {
-  border: 0;
-  background: transparent;
-  font-size: 18px;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 8px;
-  color: var(--rumby-accent);
-  transition: background 0.15s ease;
+.rumby-shell[data-panel="full"] .rumby-locate-fab {
+  bottom: calc(80vh + 20px);
 }
 
-.rumby-locate:hover {
-  background: var(--rumby-accent-soft);
+.rumby-pinpop {
+  position: fixed;
+  z-index: 40;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  width: min(92vw, 340px);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
-.rumby-locate:disabled {
-  opacity: 0.5;
-  cursor: wait;
-}
-
-.rumby-error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
-  font-size: 13px;
-  padding: 8px 12px;
-  border-radius: 12px;
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-
-.rumby-search-btn {
-  width: 100%;
-  padding: 14px;
-  border-radius: 14px;
-  border: 0;
-  background: var(--rumby-accent);
-  color: white;
+.rumby-pinpop-title {
+  font-weight: 600;
   font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28);
-  transition: transform 0.1s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
 
-.rumby-search-btn:hover:not(:disabled) {
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.32);
-}
-
-.rumby-search-btn:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.rumby-search-btn:disabled {
-  background: rgba(15, 23, 42, 0.12);
+.rumby-pinpop-coords {
+  font-size: 12px;
   color: var(--rumby-text-muted);
-  cursor: not-allowed;
-  box-shadow: none;
+  font-variant-numeric: tabular-nums;
 }
 
-/* === BOTTOM SHEET (3 snaps) === */
+.rumby-pinpop-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 
-.rumby-sheet {
+.rumby-pinpop-btn {
+  border: 1px solid var(--rumby-border);
+  background: white;
+  color: var(--rumby-text);
+  border-radius: 12px;
+  padding: 12px 10px;
+  font-weight: 600;
+  font-size: 14px;
+  min-height: 48px;
+  cursor: pointer;
+}
+
+.rumby-pinpop-btn:hover {
+  background: var(--rumby-accent-soft);
+  border-color: var(--rumby-accent);
+}
+
+.rumby-pinpop-btn-ghost {
+  background: transparent;
+  color: var(--rumby-accent);
+  grid-column: 1 / -1;
+}
+
+.rumby-pinpop-cancel {
+  border: none;
+  background: transparent;
+  color: var(--rumby-text-muted);
+  font-size: 13px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+/* ============================================================
+   PINES (markers personalizados)
+   ============================================================ */
+
+.rumby-pin {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  cursor: grab;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.25));
+  transform-origin: bottom center;
+}
+
+.rumby-pin:hover {
+  transform: scale(1.08);
+}
+
+.rumby-pin-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--pin-color, #2563eb);
+  color: white;
+  font-weight: 800;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 3px solid white;
+}
+
+.rumby-pin-tail {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 10px solid var(--pin-color, #2563eb);
+  margin-top: -3px;
+}
+
+/* ============================================================
+   PANEL INFERIOR (4 estados: hidden/peek/half/full)
+   ============================================================ */
+
+.rumby-panel {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 0;
   z-index: 20;
-  padding: 0 12px max(env(safe-area-inset-bottom), 12px);
-  display: flex;
-  flex-direction: column;
+  padding: 0 10px max(env(safe-area-inset-bottom), 10px);
   pointer-events: none;
-  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.rumby-shell[data-sheet="collapsed"] .rumby-sheet {
-  height: 28vh;
-}
-
-.rumby-shell[data-sheet="half"] .rumby-sheet {
-  height: 58vh;
-}
-
-.rumby-shell[data-sheet="full"] .rumby-sheet {
-  height: 92vh;
-}
-
-.rumby-sheet-card {
+.rumby-panel-card {
   display: flex;
   flex-direction: column;
-  padding: 4px 14px 16px;
-  gap: 10px;
-  height: 100%;
+  padding: 4px 14px 12px;
+  gap: 8px;
   pointer-events: auto;
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
+  transition: height 0.32s cubic-bezier(0.32, 0.72, 0, 1);
+  overflow: hidden;
 }
 
-.rumby-sheet-handle-btn {
+.rumby-shell[data-panel="hidden"] .rumby-panel-card {
+  height: 0;
+  padding: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+
+.rumby-shell[data-panel="peek"] .rumby-panel-card {
+  height: 160px;
+}
+
+.rumby-shell[data-panel="half"] .rumby-panel-card {
+  height: 48vh;
+}
+
+.rumby-shell[data-panel="full"] .rumby-panel-card {
+  height: 80vh;
+}
+
+.rumby-panel-handle-btn {
   border: 0;
   background: transparent;
   padding: 6px 0 4px;
@@ -371,21 +648,17 @@ button {
   width: 100%;
   display: flex;
   justify-content: center;
+  flex-shrink: 0;
 }
 
-.rumby-sheet-handle {
-  width: 44px;
+.rumby-panel-handle {
+  width: 40px;
   height: 5px;
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.22);
-  transition: background 0.15s ease;
 }
 
-.rumby-sheet-handle-btn:hover .rumby-sheet-handle {
-  background: rgba(15, 23, 42, 0.4);
-}
-
-.rumby-sheet-toggle {
+.rumby-panel-toggle {
   border: 1px solid var(--rumby-border);
   background: rgba(255, 255, 255, 0.85);
   border-radius: 999px;
@@ -399,33 +672,104 @@ button {
   justify-content: center;
 }
 
-.rumby-sheet-header {
+.rumby-panel-header {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-shrink: 0;
 }
 
-.rumby-sheet-title {
-  font-size: 16px;
+.rumby-panel-title {
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.01em;
 }
 
-.rumby-sheet-sub {
+.rumby-panel-sub {
   font-size: 12px;
   color: var(--rumby-text-muted);
 }
 
-.rumby-sheet-body {
+.rumby-panel-body {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-right: 2px;
+  flex: 1;
+  min-height: 0;
 }
 
-/* === RESULTS === */
+/* FAB para ocultar/mostrar panel */
+.rumby-hide-panel-fab {
+  position: absolute;
+  right: 14px;
+  bottom: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.95);
+  cursor: pointer;
+  font-size: 14px;
+  color: var(--rumby-text-muted);
+  box-shadow: var(--rumby-shadow-soft);
+  pointer-events: auto;
+  z-index: 2;
+}
+
+.rumby-shell[data-panel="hidden"] .rumby-hide-panel-fab {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+}
+
+/* ============================================================
+   FILTERS (chips de modo)
+   ============================================================ */
+
+.rumby-filter-row {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+
+.rumby-filter-row::-webkit-scrollbar {
+  display: none;
+}
+
+.rumby-filter-chip {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--rumby-text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+}
+
+.rumby-filter-chip[data-active="true"] {
+  background: var(--rumby-accent);
+  color: white;
+  border-color: var(--rumby-accent);
+}
+
+/* ============================================================
+   RESULTS (tarjetas de modo)
+   ============================================================ */
+
+.rumby-result-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
 .rumby-result {
   display: grid;
@@ -433,25 +777,18 @@ button {
   align-items: center;
   gap: 12px;
   padding: 12px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.85);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid var(--rumby-border);
   cursor: pointer;
-  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
   text-align: left;
   width: 100%;
-}
-
-.rumby-result:hover,
-.rumby-result:focus-visible {
-  border-color: var(--rumby-accent);
-  box-shadow: 0 8px 22px rgba(37, 99, 235, 0.12);
-  outline: none;
 }
 
 .rumby-result[data-selected="true"] {
   border-color: var(--rumby-accent);
   background: rgba(37, 99, 235, 0.06);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.14);
 }
 
 .rumby-result-emoji {
@@ -483,6 +820,26 @@ button {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 2px;
+}
+
+.rumby-result-hint {
+  font-size: 12px;
+  color: var(--rumby-text-muted);
+  margin-top: 2px;
+}
+
+.rumby-result-warning {
+  font-size: 12px;
+  color: #b45309;
+  margin-top: 2px;
+}
+
+.rumby-result-source {
+  font-size: 11px;
+  color: var(--rumby-text-muted);
+  opacity: 0.75;
+  margin-top: 2px;
 }
 
 .rumby-result-side {
@@ -510,7 +867,7 @@ button {
   border-radius: 999px;
   background: rgba(15, 23, 42, 0.06);
   font-size: 11px;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--rumby-text-muted);
 }
 
@@ -524,7 +881,38 @@ button {
   color: #047857;
 }
 
-/* === EMPTY STATE === */
+/* Acciones por resultado */
+.rumby-result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 4px 4px;
+}
+
+.rumby-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--rumby-border);
+  background: white;
+  color: var(--rumby-text);
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 36px;
+}
+
+.rumby-action[data-primary="true"] {
+  background: var(--rumby-accent);
+  border-color: var(--rumby-accent);
+  color: white;
+}
+
+/* ============================================================
+   EMPTY STATE
+   ============================================================ */
 
 .rumby-empty {
   padding: 18px 14px;
@@ -534,201 +922,31 @@ button {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  align-items: center;
 }
 
 .rumby-empty-emoji {
-  font-size: 28px;
+  font-size: 32px;
 }
 
-/* === FILTERS === */
+/* ============================================================
+   OPERATORS CARD (NAP)
+   ============================================================ */
 
-.rumby-filter-row {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding-bottom: 4px;
-  margin: 0 -2px;
-  scrollbar-width: none;
-}
-
-.rumby-filter-row::-webkit-scrollbar {
-  display: none;
-}
-
-.rumby-filter-chip {
-  flex: 0 0 auto;
-  padding: 6px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--rumby-border);
-  background: rgba(255, 255, 255, 0.85);
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--rumby-text);
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.rumby-filter-chip[data-active="true"] {
-  background: var(--rumby-accent);
-  color: white;
-  border-color: var(--rumby-accent);
-}
-
-/* === DESKTOP LAYOUT === */
-
-/* ---------- Pin popup tras tap en mapa ---------- */
-.rumby-pinpop {
-  position: fixed;
-  z-index: 30;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: min(92vw, 320px);
-  padding: 16px;
-  border-radius: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.18);
-}
-
-.rumby-pinpop-title {
-  font-weight: 600;
-  font-size: 0.98rem;
-  color: var(--rumby-ink);
-}
-
-.rumby-pinpop-coords {
-  font-size: 0.78rem;
-  color: var(--rumby-ink-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.rumby-pinpop-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.rumby-pinpop-btn {
-  appearance: none;
-  border: 1px solid var(--rumby-line);
-  background: var(--rumby-surface);
-  color: var(--rumby-ink);
-  border-radius: 12px;
-  padding: 12px 10px;
-  font-weight: 600;
-  font-size: 0.9rem;
-  min-height: 44px;
-  cursor: pointer;
-  transition: transform 120ms ease, background 160ms ease;
-}
-
-.rumby-pinpop-btn:hover {
-  background: var(--rumby-surface-strong);
-}
-
-.rumby-pinpop-btn:active {
-  transform: scale(0.97);
-}
-
-.rumby-pinpop-cancel {
-  appearance: none;
-  border: none;
-  background: transparent;
-  color: var(--rumby-ink-muted);
-  font-size: 0.85rem;
-  padding: 6px;
-  cursor: pointer;
-}
-
-/* ---------- Locate FAB del mapa ---------- */
-.rumby-locate-fab {
-  position: absolute;
-  right: 14px;
-  bottom: 14px;
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: var(--rumby-surface, #fff);
-  color: var(--rumby-ink);
-  font-size: 1.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.18);
-  z-index: 5;
-  transition: transform 120ms ease;
-}
-
-.rumby-locate-fab:active {
-  transform: scale(0.92);
-}
-
-/* ---------- Acciones por opción de modo ---------- */
-.rumby-result-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.rumby-result-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  padding: 4px 6px 8px;
-}
-
-.rumby-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid var(--rumby-line);
-  background: var(--rumby-surface);
-  color: var(--rumby-ink);
-  font-size: 0.82rem;
-  font-weight: 600;
-  text-decoration: none;
-  min-height: 36px;
-  transition: background 160ms ease, transform 120ms ease;
-}
-
-.rumby-action:hover {
-  background: var(--rumby-surface-strong);
-}
-
-.rumby-action:active {
-  transform: scale(0.97);
-}
-
-.rumby-action[data-primary="true"] {
-  background: var(--rumby-accent, #2563eb);
-  border-color: transparent;
-  color: #fff;
-}
-
-/* ---------- Card de operadores NAP ---------- */
 .rumby-operators {
-  margin-top: 12px;
+  margin-top: 8px;
   padding: 14px;
-  border-radius: 16px;
-  background: var(--rumby-surface);
-  border: 1px solid var(--rumby-line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--rumby-border);
   display: flex;
   flex-direction: column;
   gap: 10px;
 }
 
 .rumby-operators-title {
-  font-weight: 600;
-  font-size: 0.9rem;
-  color: var(--rumby-ink);
+  font-weight: 700;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -746,56 +964,79 @@ button {
   flex-direction: column;
   gap: 2px;
   padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--rumby-line);
-  background: var(--rumby-surface-strong, rgba(0, 0, 0, 0.02));
-  color: var(--rumby-ink);
+  border-radius: 10px;
+  border: 1px solid var(--rumby-border);
+  background: rgba(255, 255, 255, 0.6);
+  color: var(--rumby-text);
   text-decoration: none;
-  font-size: 0.82rem;
-  min-height: 44px;
-  transition: transform 120ms ease;
+  font-size: 13px;
+  min-height: 48px;
 }
 
 .rumby-operator-card:hover {
-  transform: translateY(-1px);
+  border-color: var(--rumby-accent);
+  background: var(--rumby-accent-soft);
 }
 
 .rumby-operator-name {
-  font-weight: 600;
+  font-weight: 700;
   line-height: 1.2;
 }
 
 .rumby-operator-modes {
-  font-size: 0.72rem;
-  color: var(--rumby-ink-muted);
+  font-size: 11px;
+  color: var(--rumby-text-muted);
 }
+
+/* ============================================================
+   DESKTOP LAYOUT
+   ============================================================ */
 
 @media (min-width: 64rem) {
   .rumby-top {
     top: 18px;
     left: 18px;
     right: auto;
-    width: 380px;
+    width: 400px;
+    max-height: calc(100vh - 36px);
   }
 
-  .rumby-sheet,
-  .rumby-shell[data-sheet="collapsed"] .rumby-sheet,
-  .rumby-shell[data-sheet="half"] .rumby-sheet,
-  .rumby-shell[data-sheet="full"] .rumby-sheet {
+  .rumby-panel,
+  .rumby-shell[data-panel="hidden"] .rumby-panel,
+  .rumby-shell[data-panel="peek"] .rumby-panel,
+  .rumby-shell[data-panel="half"] .rumby-panel,
+  .rumby-shell[data-panel="full"] .rumby-panel {
     top: 18px;
     bottom: 18px;
     right: 18px;
     left: auto;
-    width: 380px;
+    width: 400px;
     height: auto;
   }
 
-  .rumby-sheet-card {
+  .rumby-panel-card,
+  .rumby-shell[data-panel="peek"] .rumby-panel-card,
+  .rumby-shell[data-panel="half"] .rumby-panel-card,
+  .rumby-shell[data-panel="full"] .rumby-panel-card {
     height: 100%;
   }
 
-  .rumby-sheet-handle-btn,
-  .rumby-sheet-toggle {
+  .rumby-shell[data-panel="hidden"] .rumby-panel-card {
+    height: 0;
+  }
+
+  .rumby-panel-handle-btn {
+    display: none;
+  }
+
+  .rumby-locate-fab,
+  .rumby-shell[data-panel="hidden"] .rumby-locate-fab,
+  .rumby-shell[data-panel="full"] .rumby-locate-fab {
+    bottom: 40px;
+    right: 440px;
+  }
+
+  .rumby-hide-panel-fab {
     display: none;
   }
 }

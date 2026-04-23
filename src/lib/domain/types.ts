@@ -24,6 +24,8 @@ export type Place = {
 export type TripIntent = {
   origin: Place;
   destination: Place;
+  /** Paradas intermedias en orden. Vacio si no hay waypoints. */
+  waypoints?: Place[];
   /** ISO datetime local. */
   when: string;
   /** "depart": salgo a esa hora. "arrive": quiero llegar antes. */

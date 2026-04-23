@@ -12,7 +12,7 @@ export const walkMode: ModeEstimator = {
     if (fallbackKm > 6) return null;
 
     // Intento OSRM real para obtener distancia y geometria de la ruta peatonal.
-    const route = await osrmRoute("walking", trip.origin, trip.destination);
+    const route = await osrmRoute("walking", trip.origin, trip.destination, trip.waypoints ?? []);
 
     if (route) {
       const distanceKm = route.distanceM / 1000;

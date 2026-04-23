@@ -11,7 +11,7 @@ export const carMode: ModeEstimator = {
     const fallbackKm = haversineKm(trip.origin, trip.destination);
     if (fallbackKm < 1) return null;
 
-    const route = await osrmRoute("driving", trip.origin, trip.destination);
+    const route = await osrmRoute("driving", trip.origin, trip.destination, trip.waypoints ?? []);
     const distanceKm = route ? route.distanceM / 1000 : fallbackKm;
     const durationMin = route
       ? Math.max(1, Math.round(route.durationS / 60)) + 6 // +6 buscar aparcamiento

@@ -14,7 +14,7 @@ export const bikeMode: ModeEstimator = {
     if (fallbackKm > 15) return null;
 
     // OSRM cycling para distancia y geometria reales.
-    const route = await osrmRoute("cycling", trip.origin, trip.destination);
+    const route = await osrmRoute("cycling", trip.origin, trip.destination, trip.waypoints ?? []);
     const distanceKm = route ? route.distanceM / 1000 : fallbackKm;
     const baseDurationMin = route
       ? Math.max(1, Math.round(route.durationS / 60)) + 3 // +3 desbloqueo + ajuste

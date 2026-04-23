@@ -26,9 +26,11 @@ export async function osrmRoute(
   profile: OsrmProfile,
   origin: Place,
   destination: Place,
+  waypoints: Place[] = [],
   signal?: AbortSignal,
 ): Promise<OsrmRoute | null> {
-  const coords = `${origin.lon},${origin.lat};${destination.lon},${destination.lat}`;
+  const pts = [origin, ...waypoints, destination];
+  const coords = pts.map((p) => `${p.lon},${p.lat}`).join(";");
   const url = `${ENDPOINT}/${profile}/${coords}?overview=full&geometries=geojson&alternatives=false&steps=false`;
 
   try {
