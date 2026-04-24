@@ -881,6 +881,35 @@ button {
   color: #047857;
 }
 
+/* Detalles desplegables (paradas, lineas) */
+.rumby-result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 12px 4px;
+}
+
+.rumby-result-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(37, 99, 235, 0.06);
+  border: 1px solid rgba(37, 99, 235, 0.16);
+}
+
+.rumby-result-detail-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--rumby-accent);
+}
+
+.rumby-result-detail-value {
+  font-size: 12px;
+  color: var(--rumby-text);
+}
+
 /* Acciones por resultado */
 .rumby-result-actions {
   display: flex;

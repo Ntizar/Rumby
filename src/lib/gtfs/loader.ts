@@ -10,13 +10,40 @@ import { unzipSync, strFromU8 } from "fflate";
  * - Cachea el resultado en memoria del runtime.
  */
 
+/** Categoria simplificada Rumby derivada de GTFS route_type. */
+export type GtfsRouteCategory = "metro" | "bus" | "rail" | "tram" | "other";
+
+export type GtfsStopRoute = {
+  shortName: string;
+  category: GtfsRouteCategory;
+};
+
 export type GtfsStop = {
   id: string;
   name: string;
   lat: number;
   lon: number;
-  routes: string[]; // short_name de las routes que pasan por aqui
+  routes: GtfsStopRoute[];
+  /** Categorias presentes en esta parada (rapido para filtrar). */
+  categories: GtfsRouteCategory[];
 };
+
+/**
+ * Mapea route_type GTFS a categoria Rumby.
+ * Spec: https://gtfs.org/schedule/reference/#routestxt
+ *  0 tram/streetcar | 1 metro/subway | 2 rail | 3 bus | 4 ferry
+ *  5 cable tram | 6 aerial lift | 7 funicular | 11 trolleybus | 12 monorail
+ * Tambien soportamos extended types Hierarchical Vehicle Type (100..1700).
+ */
+export function categorizeRouteType(rt: string | number | undefined): GtfsRouteCategory {
+  const n = typeof rt === "string" ? Number(rt) : rt ?? -1;
+  if (!Number.isFinite(n)) return "other";
+  if (n === 1 || n === 12 || (n >= 400 && n <= 405)) return "metro";
+  if (n === 2 || (n >= 100 && n <= 199)) return "rail";
+  if (n === 3 || n === 11 || n === 800 || (n >= 700 && n <= 717)) return "bus";
+  if (n === 0 || n === 5 || (n >= 900 && n <= 906)) return "tram";
+  return "other";
+}
 
 export type GtfsBundle = {
   feedId: string;
@@ -78,12 +105,15 @@ async function fetchAndParse(spec: GtfsFeedSpec): Promise<GtfsBundle | null> {
   const tripsRaw = tripsTxt ? parseCsv(strFromU8(tripsTxt)) : [];
   const stopTimesRaw = stopTimesTxt ? parseCsv(strFromU8(stopTimesTxt)) : [];
 
-  // route_id -> short_name
-  const routeShort = new Map<string, string>();
+  // route_id -> { short, category }
+  const routeInfo = new Map<string, GtfsStopRoute>();
   for (const r of routesRaw) {
     const id = r.route_id;
     if (!id) continue;
-    routeShort.set(id, r.route_short_name || r.route_long_name || id);
+    routeInfo.set(id, {
+      shortName: r.route_short_name || r.route_long_name || id,
+      category: categorizeRouteType(r.route_type),
+    });
   }
 
   // trip_id -> route_id
@@ -92,22 +122,22 @@ async function fetchAndParse(spec: GtfsFeedSpec): Promise<GtfsBundle | null> {
     if (t.trip_id && t.route_id) tripRoute.set(t.trip_id, t.route_id);
   }
 
-  // stop_id -> Set<route_short_name>
-  const stopRoutes = new Map<string, Set<string>>();
+  // stop_id -> Map<shortName, GtfsStopRoute> (dedupe por nombre)
+  const stopRoutes = new Map<string, Map<string, GtfsStopRoute>>();
   for (const st of stopTimesRaw) {
     const tripId = st.trip_id;
     const stopId = st.stop_id;
     if (!tripId || !stopId) continue;
     const routeId = tripRoute.get(tripId);
     if (!routeId) continue;
-    const short = routeShort.get(routeId);
-    if (!short) continue;
-    let set = stopRoutes.get(stopId);
-    if (!set) {
-      set = new Set();
-      stopRoutes.set(stopId, set);
+    const info = routeInfo.get(routeId);
+    if (!info) continue;
+    let map = stopRoutes.get(stopId);
+    if (!map) {
+      map = new Map();
+      stopRoutes.set(stopId, map);
     }
-    set.add(short);
+    if (!map.has(info.shortName)) map.set(info.shortName, info);
   }
 
   const stops: GtfsStop[] = [];
@@ -115,14 +145,20 @@ async function fetchAndParse(spec: GtfsFeedSpec): Promise<GtfsBundle | null> {
     const lat = Number(s.stop_lat);
     const lon = Number(s.stop_lon);
     if (!Number.isFinite(lat) || !Number.isFinite(lon)) continue;
-    // location_type 0/empty = parada; saltamos estaciones agrupadas (1) si tienen hijos
     if (s.location_type && s.location_type !== "0") continue;
+    const routesMap = stopRoutes.get(s.stop_id);
+    const routes = routesMap
+      ? Array.from(routesMap.values()).sort((a, b) => naturalSort(a.shortName, b.shortName))
+      : [];
+    const cats = new Set<GtfsRouteCategory>();
+    for (const r of routes) cats.add(r.category);
     stops.push({
       id: s.stop_id,
       name: s.stop_name || s.stop_id,
       lat,
       lon,
-      routes: Array.from(stopRoutes.get(s.stop_id) ?? []).sort(naturalSort),
+      routes,
+      categories: Array.from(cats),
     });
   }
 

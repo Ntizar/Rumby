@@ -905,6 +905,16 @@ function ResultCard({
           </span>
         </span>
       </button>
+      {selected && option.details && option.details.length > 0 && (
+        <div className="rumby-result-details">
+          {option.details.map((d, i) => (
+            <div key={i} className="rumby-result-detail">
+              <span className="rumby-result-detail-label">{d.label}</span>
+              <span className="rumby-result-detail-value">{d.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
       {selected && actions.length > 0 && (
         <div className="rumby-result-actions">
           {primary && <ActionLink action={primary} primary />}
